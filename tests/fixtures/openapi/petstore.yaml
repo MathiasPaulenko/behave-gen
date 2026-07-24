@@ -1,0 +1,22 @@
+openapi: 3.0.3
+info:
+  title: Petstore YAML API
+  version: 1.0.0
+paths:
+  /pets:
+    get:
+      operationId: listPets
+      summary: List all pets
+      tags:
+        - pets
+    post:
+      operationId: createPet
+      summary: Create a pet
+      tags:
+        - pets
+  /pets/{petId}:
+    get:
+      operationId: showPetById
+      summary: Info for a specific pet
+      tags:
+        - pets
