@@ -1,0 +1,117 @@
+[build-system]
+requires = ["hatchling>=1.21"]
+build-backend = "hatchling.build"
+
+[project]
+name = "behave-gen"
+version = "0.1.0"
+description = "CLI toolkit for scaffolding and evolving Behave BDD projects."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Mathias Paulenko" }]
+keywords = ["behave", "bdd", "gherkin", "scaffolding", "codegen", "openapi", "cucumber"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development :: Testing",
+    "Topic :: Software Development :: Code Generators",
+]
+dependencies = [
+    "behave>=1.2.6",
+    "behave-model>=1.0",
+    "typer>=0.12",
+]
+
+[project.optional-dependencies]
+jinja2 = ["jinja2>=3.1"]
+doctor = ["behave-doctor>=1.0"]
+lint = ["behave-lint>=1.0"]
+format = ["behave-format>=1.0"]
+kit = ["behave-kit>=1.0"]
+data = ["behave-data>=1.0"]
+openapi = ["pyyaml>=6.0"]
+postman = []
+swagger = ["pyyaml>=6.0"]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "ruff>=0.5",
+    "mypy>=1.10",
+    "build>=1.2",
+    "pre-commit>=3.7",
+]
+docs = [
+    "mkdocs>=1.6",
+    "mkdocs-material>=9.5",
+    "mkdocstrings[python]>=0.26",
+]
+all = [
+    "behave-gen[jinja2,doctor,lint,format,kit,data,openapi,swagger]",
+]
+
+[project.scripts]
+behave-gen = "behave_gen.cli.app:run"
+
+[project.urls]
+Homepage = "https://github.com/behave-gen/behave-gen"
+Documentation = "https://behave-gen.github.io/behave-gen/"
+Repository = "https://github.com/behave-gen/behave-gen"
+Issues = "https://github.com/behave-gen/behave-gen/issues"
+Changelog = "https://github.com/behave-gen/behave-gen/blob/main/CHANGELOG.md"
+
+[tool.hatch.build.targets.wheel]
+packages = ["behave_gen"]
+
+[tool.hatch.build.targets.sdist]
+include = ["behave_gen", "tests", "README.md", "CHANGELOG.md", "LICENSE"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+extend-exclude = ["examples"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "C4", "SIM", "PL"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["PLR2004"]
+"behave_gen/cli/**" = ["B008", "PLR0913"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_unreachable = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+exclude = ["behave_gen/templates/", "tests/"]
+
+[[tool.mypy.overrides]]
+module = [
+    "behave_model",
+    "behave_model.*",
+    "behave_doctor",
+    "behave_doctor.*",
+    "yaml",
+]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.coverage.run]
+branch = true
+source = ["behave_gen"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false

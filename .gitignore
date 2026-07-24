@@ -6,6 +6,9 @@ __pycache__/
 # C extensions
 *.so
 
+# MkDocs build output
+site/
+
 # Distribution / packaging
 .Python
 build/
@@ -71,3 +74,12 @@ Thumbs.db
 
 # Project-specific reference folder (not for public release)
 ref/
+
+# Generated test projects (from manual smoke tests at repo root)
+/my-project/
+/demo/
+/test-project/
+/sandbox/
+/features/
+/environment.py
+/behave.toml
