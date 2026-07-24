@@ -14,6 +14,14 @@ from behave_gen.commands.from_openapi import FromOpenApiOptions, run_from_openap
 from .conftest import parse_all_features, run_behave_dry_run, run_ruff_check
 
 
+def test_outside_project_root_fails(project: Path, openapi_yaml_spec: Path, tmp_path: Path) -> None:
+    rc = run_from_openapi(
+        FromOpenApiOptions(spec=str(openapi_yaml_spec), out_dir=str(tmp_path)),
+        project_root=project,
+    )
+    assert rc == 1
+
+
 class TestFromOpenApiYaml:
     """``from-openapi`` with a YAML spec."""
 

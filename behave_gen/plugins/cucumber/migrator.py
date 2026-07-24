@@ -74,7 +74,7 @@ def _find_step_definitions(source: Path) -> list[Path]:
     candidates: list[Path] = []
     for pattern in ("**/*Steps*.java", "**/*StepDefs*.java", "**/*StepDefinitions*.java"):
         for p in source.rglob(pattern):
-            if _within_source(p, source):
+            if _within_source(p, source) and p.is_file():
                 candidates.append(p.resolve())
     return sorted(set(candidates))
 
@@ -123,7 +123,12 @@ def migrate_cucumber(source: str | Path, out_dir: str | Path) -> MigrationReport
             warnings.append(f"Could not read {rel}: {exc}")
             continue
         cleaned = _clean_feature_text(text)
-        target.write_text(cleaned, encoding="utf-8")
+        try:
+            target.write_text(cleaned, encoding="utf-8")
+        except OSError as exc:
+            skipped.append(str(rel))
+            warnings.append(f"Could not write {rel}: {exc}")
+            continue
         written.append(target)
 
     java_steps = _find_step_definitions(src)

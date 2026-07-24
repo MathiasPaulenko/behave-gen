@@ -58,8 +58,12 @@ class StringTemplateEngine:
 
     def render_file(self, src: Path, dst: Path, context: dict[str, Any]) -> None:
         dst.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            text = src.read_text(encoding="utf-8")
+        except UnicodeDecodeError as exc:
+            raise TemplateRenderError(f"Could not decode {src} as UTF-8: {exc}") from exc
         dst.write_text(
-            self.render(src.read_text(encoding="utf-8"), context, filename=str(src)),
+            self.render(text, context, filename=str(src)),
             encoding="utf-8",
         )
 
@@ -81,8 +85,12 @@ class Jinja2Engine:
 
     def render_file(self, src: Path, dst: Path, context: dict[str, Any]) -> None:
         dst.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            text = src.read_text(encoding="utf-8")
+        except UnicodeDecodeError as exc:
+            raise TemplateRenderError(f"Could not decode {src} as UTF-8: {exc}") from exc
         dst.write_text(
-            self.render(src.read_text(encoding="utf-8"), context, filename=str(src)),
+            self.render(text, context, filename=str(src)),
             encoding="utf-8",
         )
 

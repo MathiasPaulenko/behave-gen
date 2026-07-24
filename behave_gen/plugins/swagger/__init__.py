@@ -33,7 +33,15 @@ def _load_swagger(source: Path) -> dict[str, Any]:
             import yaml  # noqa: PLC0415 - optional extra.
         except ImportError as exc:
             raise SwaggerParseError("YAML support requires the 'openapi' extra.") from exc
-        loaded = yaml.safe_load(text)
+        try:
+            loaded = yaml.safe_load(text)
+        except Exception as exc:  # noqa: BLE001 - yaml can raise many exception types.
+            raise SwaggerParseError(f"Could not parse {source}: {exc}") from exc
+    elif suffix == ".json":
+        try:
+            loaded = json.loads(text)
+        except json.JSONDecodeError as exc:
+            raise SwaggerParseError(f"Invalid JSON in {source}: {exc}") from exc
     else:
         try:
             loaded = json.loads(text)
@@ -42,7 +50,10 @@ def _load_swagger(source: Path) -> dict[str, Any]:
                 import yaml  # noqa: PLC0415 - optional extra.
             except ImportError as exc:
                 raise SwaggerParseError("YAML support requires the 'openapi' extra.") from exc
-            loaded = yaml.safe_load(text)
+            try:
+                loaded = yaml.safe_load(text)
+            except Exception as yaml_exc:  # noqa: BLE001
+                raise SwaggerParseError(f"Could not parse {source}: {yaml_exc}") from yaml_exc
     if not isinstance(loaded, dict):
         raise SwaggerParseError("Expected a mapping at the top level.")
     return loaded
@@ -63,10 +74,11 @@ def convert_swagger_to_openapi(source: str | Path) -> OpenApiSpec:
         raise SwaggerParseError(f"Swagger spec not found: {path}")
 
     doc = _load_swagger(path)
-    swagger_version = str(doc.get("swagger", ""))
-    if swagger_version != "2.0":
+    swagger_version = doc.get("swagger")
+    if not isinstance(swagger_version, str) or swagger_version != "2.0":
+        version_repr = repr(swagger_version) if swagger_version is not None else "<missing>"
         raise SwaggerParseError(
-            f"Unsupported Swagger version {swagger_version!r}. Only 2.0 is supported."
+            f"Unsupported Swagger version {version_repr}. Only 2.0 is supported."
         )
 
     # Minimal conversion: rewrite the version key. Path items are structurally
@@ -75,18 +87,17 @@ def convert_swagger_to_openapi(source: str | Path) -> OpenApiSpec:
     converted.pop("swagger", None)
     converted["openapi"] = "3.0.3"
 
-    # Write the converted doc to a temp file and parse it.
+    # Write the converted doc to a temp file inside a private temp directory and parse it.
     import tempfile  # noqa: PLC0415 - local import avoids module-level cost.
 
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".json", delete=False, encoding="utf-8"
-    ) as tmp:
-        json.dump(converted, tmp)
-        tmp_path = Path(tmp.name)
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp_path = Path(tmpdir) / "converted.json"
+        try:
+            json.dump(converted, tmp_path.open("w", encoding="utf-8"))
+        except (TypeError, ValueError) as exc:
+            raise SwaggerParseError(f"Failed to serialize converted spec: {exc}") from exc
 
-    try:
-        return parse_openapi(tmp_path)
-    except OpenApiParseError as exc:
-        raise SwaggerParseError(f"Conversion failed: {exc}") from exc
-    finally:
-        tmp_path.unlink(missing_ok=True)
+        try:
+            return parse_openapi(tmp_path)
+        except OpenApiParseError as exc:
+            raise SwaggerParseError(f"Conversion failed: {exc}") from exc

@@ -49,12 +49,15 @@ def _resolve_url(url_field: Any) -> str:
         host = url_field.get("host")
         path = url_field.get("path", [])
         if isinstance(host, list):
-            host_str = ".".join(str(p) for p in host)
+            host_str = ".".join(str(p) for p in host if p is not None)
         elif isinstance(host, str):
             host_str = host
         else:
             host_str = ""
-        path_str = "/".join(str(p) for p in path) if isinstance(path, list) else str(path)
+        if isinstance(path, list):
+            path_str = "/".join(str(p) for p in path if p is not None)
+        else:
+            path_str = str(path)
         return f"{host_str}/{path_str}".rstrip("/")
     return str(url_field)
 
@@ -73,7 +76,8 @@ def _extract_requests(items: list[Any], parent_folder: str = "") -> list[Postman
         request = item.get("request")
         if not isinstance(request, dict):
             continue
-        method = str(request.get("method", "GET")).lower()
+        method_raw = request.get("method", "GET")
+        method = str(method_raw).lower() if isinstance(method_raw, str) else "get"
         url = _resolve_url(request.get("url"))
         requests.append(PostmanRequest(name=name, method=method, url=url, folder=parent_folder))
     return requests

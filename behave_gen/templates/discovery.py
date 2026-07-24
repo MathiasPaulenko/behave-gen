@@ -88,13 +88,21 @@ class TemplateSet:
                 continue
             rel_str = rel.as_posix()
             if rel_str in rename_map:
-                rel = Path(rename_map[rel_str])
+                new_rel = Path(rename_map[rel_str])
             elif rel.name in rename_map:
-                rel = rel.parent / rename_map[rel.name]
-            target = dest_root / rel
+                new_rel = rel.parent / rename_map[rel.name]
+            else:
+                new_rel = rel
+            if new_rel.is_absolute() or ".." in new_rel.parts:
+                raise TemplateRenderError(
+                    f"Invalid rename path {new_rel!r}: must be relative and not contain '..'."
+                )
+            target = dest_root / new_rel
             try:
                 engine.render_file(template_file.source, target, context)
             except TemplateRenderError:
                 raise
+            except OSError as exc:
+                raise TemplateRenderError(f"Failed to write {target}: {exc}") from exc
             written.append(target)
         return written

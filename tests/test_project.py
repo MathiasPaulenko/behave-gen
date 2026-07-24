@@ -8,7 +8,7 @@ import pytest
 
 from behave_gen.config import BehaveGenConfig
 from behave_gen.paths import relative_to, resolve_path
-from behave_gen.project import Project, discover_project, find_project_root
+from behave_gen.project import Project, ProjectError, discover_project, find_project_root
 
 
 def test_resolve_path_relative_uses_cwd() -> None:
@@ -80,3 +80,9 @@ def test_project_is_frozen(tmp_path: Path) -> None:
     project = Project.from_root(tmp_path)
     with pytest.raises(AttributeError):
         project.root = tmp_path / "other"  # type: ignore[misc]
+
+
+def test_project_from_root_rejects_escaping_config_paths(tmp_path: Path) -> None:
+    config = BehaveGenConfig.default().with_overrides(features_dir="../outside")
+    with pytest.raises(ProjectError, match="escapes project root"):
+        Project.from_root(tmp_path, config=config)

@@ -67,6 +67,36 @@ class BehaveGenConfig:
         return {f.name: getattr(self, f.name) for f in fields(self)}
 
 
+def load_config_at(path: str | Path) -> BehaveGenConfig:
+    """Load behave-gen configuration from an explicit ``pyproject.toml`` path.
+
+    Falls back to :meth:`BehaveGenConfig.default` when the file or the
+    ``[tool.behave-gen]`` table is missing.
+
+    Args:
+        path: Path to ``pyproject.toml``.
+
+    Returns:
+        A frozen :class:`BehaveGenConfig`.
+
+    Raises:
+        FileNotFoundError: If ``path`` does not exist.
+        ValueError: If the file cannot be decoded as TOML or contains invalid
+            configuration values.
+    """
+    pyproject = Path(path)
+    if not pyproject.is_file():
+        raise FileNotFoundError(f"Config file not found: {pyproject}")
+
+    try:
+        with pyproject.open("rb") as handle:
+            data = tomllib.load(handle)
+    except tomllib.TOMLDecodeError as exc:
+        raise ValueError(f"Could not parse {pyproject}: {exc}") from exc
+
+    return _build_config(data)
+
+
 def load_config(root: str | Path) -> BehaveGenConfig:
     """Load behave-gen configuration from ``root/pyproject.toml``.
 
@@ -91,9 +121,11 @@ def load_config(root: str | Path) -> BehaveGenConfig:
     if not pyproject.is_file():
         return BehaveGenConfig.default()
 
-    with pyproject.open("rb") as handle:
-        data = tomllib.load(handle)
+    return load_config_at(pyproject)
 
+
+def _build_config(data: dict[str, Any]) -> BehaveGenConfig:
+    """Build a :class:`BehaveGenConfig` from parsed ``pyproject.toml`` data."""
     tool_section = data.get("tool", {})
     raw = tool_section.get(CONFIG_TABLE, {})
     if not raw:

@@ -13,7 +13,9 @@ from dataclasses import dataclass
 from importlib import resources
 from pathlib import Path
 
+from behave_gen.config import BehaveGenConfig
 from behave_gen.paths import resolve_project_root
+from behave_gen.project import Project, ProjectError
 
 _STEP_LIB_ROOT = "behave_gen.step_libraries"
 
@@ -51,7 +53,8 @@ def add_steps(
     project_root: str | Path,
     options: AddStepsOptions,
     *,
-    steps_dir: str = "features/steps",
+    steps_dir: str | Path = "features/steps",
+    output_file: str | Path | None = None,
 ) -> Path:
     """Copy a step library into ``project_root``'s steps directory.
 
@@ -59,6 +62,8 @@ def add_steps(
         project_root: Root of the Behave project.
         options: Add-steps options.
         steps_dir: Steps directory relative to ``project_root``.
+        output_file: Optional explicit target path. When omitted the standard
+            library filename inside ``steps_dir`` is used.
 
     Returns:
         The path to the written step-definition file.
@@ -79,8 +84,8 @@ def add_steps(
     steps.mkdir(parents=True, exist_ok=True)
 
     template_name, output_name = _BUILTIN_LIBRARIES[options.lib]
-    target = steps / output_name
-    if target.exists():
+    target = Path(output_file) if output_file is not None else steps / output_name
+    if target.exists() or target.is_symlink():
         raise AddStepsError(
             f"Step file already exists: {target}. Remove it or choose another library."
         )
@@ -91,7 +96,8 @@ def add_steps(
     try:
         rendered = string.Template(raw).substitute(project_name=project_name)
     except KeyError as exc:
-        raise AddStepsError(f"Missing template variable ${exc.args[0]}.") from exc
+        key = exc.args[0] if exc.args else "<unknown>"
+        raise AddStepsError(f"Missing template variable ${key}.") from exc
 
     target.write_text(rendered, encoding="utf-8")
     return target
@@ -100,11 +106,18 @@ def add_steps(
 def run_add_steps(
     options: AddStepsOptions,
     project_root: str | Path | None = None,
+    *,
+    config: BehaveGenConfig | None = None,
 ) -> int:
     """CLI entry point for ``behave-gen add steps``."""
     root = resolve_project_root(project_root)
     try:
-        path = add_steps(root, options)
+        project = Project.from_root(root, config=config)
+    except ProjectError as exc:
+        print(f"add steps: {exc}", file=sys.stderr)
+        return 1
+    try:
+        path = add_steps(project.root, options, steps_dir=project.steps_dir)
     except AddStepsError as exc:
         print(f"add steps: {exc}", file=sys.stderr)
         return 1

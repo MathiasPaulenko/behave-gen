@@ -59,12 +59,15 @@ def _load_document(source: Path) -> dict[str, Any]:
         # Try JSON first, then YAML.
         try:
             loaded = json.loads(text)
-        except json.JSONDecodeError:
+        except json.JSONDecodeError as json_exc:
             try:
                 import yaml  # noqa: PLC0415 - optional extra.
             except ImportError as exc:
                 raise OpenApiParseError("YAML support requires the 'openapi' extra.") from exc
-            loaded = yaml.safe_load(text)
+            try:
+                loaded = yaml.safe_load(text)
+            except Exception as yaml_exc:  # noqa: BLE001 - yaml can raise many exceptions.
+                raise OpenApiParseError(f"Could not parse {source}: {yaml_exc}") from json_exc
     if not isinstance(loaded, dict):
         raise OpenApiParseError(
             f"Expected a mapping at the top level, got {type(loaded).__name__}."
@@ -86,7 +89,8 @@ def _summary(op: dict[str, Any]) -> str:
         return summary
     desc = op.get("description")
     if isinstance(desc, str) and desc:
-        return desc.splitlines()[0]
+        lines = desc.splitlines()
+        return lines[0] if lines else ""
     return ""
 
 
@@ -109,10 +113,11 @@ def parse_openapi(source: str | Path) -> OpenApiSpec:
         raise OpenApiParseError(f"OpenAPI spec not found: {path}")
 
     doc = _load_document(path)
-    openapi_version = str(doc.get("openapi", ""))
-    if not openapi_version.startswith("3."):
+    openapi_version = doc.get("openapi")
+    if not isinstance(openapi_version, str) or not openapi_version.startswith("3."):
+        version_repr = repr(openapi_version) if openapi_version is not None else "<missing>"
         raise OpenApiParseError(
-            f"Unsupported OpenAPI version {openapi_version!r}. Only OpenAPI 3.x is supported."
+            f"Unsupported OpenAPI version {version_repr}. Only OpenAPI 3.x is supported."
         )
 
     info = doc.get("info", {})
@@ -125,9 +130,11 @@ def parse_openapi(source: str | Path) -> OpenApiSpec:
         raise OpenApiParseError("'paths' must be a mapping.")
 
     for path_str, path_item in paths.items():
-        if not isinstance(path_item, dict):
+        if not isinstance(path_str, str) or not isinstance(path_item, dict):
             continue
         for method, op in path_item.items():
+            if not isinstance(method, str):
+                continue
             if method.lower() not in {"get", "post", "put", "patch", "delete", "head", "options"}:
                 continue
             if not isinstance(op, dict):

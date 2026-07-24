@@ -19,6 +19,23 @@ def _safe_filename(folder: str) -> str:
     return cleaned or "root"
 
 
+def _format_header_tags(tags: tuple[str, ...]) -> str:
+    """Render tag parts as a ``@tag1 @tag2\\n`` prefix line."""
+    if not tags:
+        return ""
+    normalized = [t if t.startswith("@") else f"@{t}" for t in tags]
+    return " ".join(normalized) + "\n"
+
+
+def _collect_tags(tag: str | None, default_tags: tuple[str, ...]) -> tuple[str, ...]:
+    """Merge an optional single tag with configured default tags."""
+    parts: list[str] = []
+    parts.extend(default_tags)
+    if tag:
+        parts.append(tag)
+    return tuple(parts)
+
+
 def _humanize(folder: str) -> str:
     """Turn ``Auth/Login`` into ``Auth Login``."""
     return folder.replace("/", " ").replace("_", " ").strip() or "Root"
@@ -42,10 +59,10 @@ def build_feature_text(
     requests: list[PostmanRequest],
     *,
     title: str,
-    tag: str | None = None,
+    tags: tuple[str, ...] = (),
 ) -> str:
     """Build the full ``.feature`` file text for a single folder."""
-    header_tags = f"@{tag}\n" if tag else ""
+    header_tags = _format_header_tags(tags)
     feature_name = _humanize(folder) if folder else title
     description = f"Scenarios for {feature_name} generated from {title}."
     scenarios = "\n\n".join(_scenario_for(req) for req in requests)
@@ -56,12 +73,14 @@ def build_features(
     collection: PostmanCollection,
     *,
     tag: str | None = None,
+    default_tags: tuple[str, ...] = (),
 ) -> dict[str, str]:
     """Build feature file contents grouped by Postman folder.
 
     Args:
         collection: Parsed Postman collection.
         tag: Optional tag added to every feature.
+        default_tags: Default tags from project configuration, merged with ``tag``.
 
     Returns:
         Mapping of filename (without extension) -> feature file text.
@@ -70,8 +89,9 @@ def build_features(
     for req in collection.requests:
         folder_reqs[req.folder].append(req)
 
+    merged_tags = _collect_tags(tag, default_tags)
     result: dict[str, str] = {}
     for folder, reqs in folder_reqs.items():
         filename = _safe_filename(folder) if folder else _safe_filename(collection.name)
-        result[filename] = build_feature_text(folder, reqs, title=collection.name, tag=tag)
+        result[filename] = build_feature_text(folder, reqs, title=collection.name, tags=merged_tags)
     return result

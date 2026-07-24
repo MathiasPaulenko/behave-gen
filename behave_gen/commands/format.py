@@ -10,8 +10,10 @@ import subprocess
 import sys
 from pathlib import Path
 
+from behave_gen.config import BehaveGenConfig
 from behave_gen.diagnostics import check_extra
 from behave_gen.paths import resolve_project_root
+from behave_gen.project import Project, ProjectError
 
 
 def run_format(
@@ -19,6 +21,7 @@ def run_format(
     *,
     check: bool = False,
     paths: list[str] | None = None,
+    config: BehaveGenConfig | None = None,
 ) -> int:
     """CLI entry point for ``behave-gen format``.
 
@@ -31,8 +34,10 @@ def run_format(
         The behave-format exit code, or ``0`` when the extra is missing.
     """
     root = resolve_project_root(project_root)
-    if not root.is_dir():
-        print(f"format: Project root not found: {root}", file=sys.stderr)
+    try:
+        project = Project.from_root(root, config=config)
+    except ProjectError as exc:
+        print(f"format: {exc}", file=sys.stderr)
         return 1
 
     status = check_extra("format")
@@ -40,10 +45,10 @@ def run_format(
         print(f"behave-format is not installed. Install it with: {status.install_hint}")
         return 0
 
-    targets = paths if paths else [str(root / "features")]
+    targets = paths if paths else [str(project.features_dir)]
     cmd = [sys.executable, "-m", "behave_format", *targets]
     if check:
         cmd.append("--check")
 
-    proc = subprocess.run(cmd, cwd=root, check=False)
+    proc = subprocess.run(cmd, cwd=project.root, check=False)
     return proc.returncode

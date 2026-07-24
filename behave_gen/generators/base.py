@@ -41,6 +41,7 @@ class Generator(Protocol):
         *,
         step_lib: str | None = None,
         tag: str | None = None,
+        default_tags: tuple[str, ...] = (),
         include_paths: list[str] | None = None,
         include_methods: list[str] | None = None,
     ) -> GenerationResult:

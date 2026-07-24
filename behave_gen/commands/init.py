@@ -14,17 +14,7 @@ from pathlib import Path
 from behave_gen.paths import resolve_project_root, validate_name
 from behave_gen.templates.engine import TemplateRenderError, get_engine
 from behave_gen.templates.registry import TemplateRegistry, default_registry
-
-# environment.py variants selected by the --kit / --data flags.
-_ENVIRONMENT_VARIANTS = {
-    (False, False): "environment.py",
-    (True, False): "environment_with_kit.py",
-    (False, True): "environment_with_data.py",
-    (True, True): "environment_with_kit_data.py",
-}
-
-# All environment variant filenames; only the selected one is emitted.
-_ALL_ENVIRONMENT_VARIANTS = frozenset(_ENVIRONMENT_VARIANTS.values())
+from behave_gen.templates.variants import build_skip_and_rename
 
 
 class InitError(Exception):
@@ -41,28 +31,6 @@ class InitOptions:
     data: bool = False
     force: bool = False
     template_engine: str = "string"
-
-
-def _environment_variant(kit: bool, data: bool) -> str:
-    return _ENVIRONMENT_VARIANTS[(kit, data)]
-
-
-def _build_skip_and_rename(kit: bool, data: bool) -> tuple[frozenset[str], dict[str, str]]:
-    """Compute which environment variants to skip and which to rename."""
-    selected = _environment_variant(kit, data)
-    skip: set[str] = set()
-    rename: dict[str, str] = {}
-    for variant in _ALL_ENVIRONMENT_VARIANTS:
-        if variant == "environment.py":
-            # The base environment.py is only emitted when selected.
-            if selected != "environment.py":
-                skip.add(variant)
-            continue
-        if variant == selected:
-            rename[variant] = "environment.py"
-        else:
-            skip.add(variant)
-    return frozenset(skip), rename
 
 
 def init_project(
@@ -93,10 +61,13 @@ def init_project(
     parent.mkdir(parents=True, exist_ok=True)
     project_root = parent / name
 
-    if project_root.exists():
+    if project_root.exists() or project_root.is_symlink():
         if not options.force:
             raise InitError(f"Directory already exists: {project_root}. Use --force to overwrite.")
-        shutil.rmtree(project_root)
+        if project_root.is_symlink() or project_root.is_file():
+            project_root.unlink()
+        else:
+            shutil.rmtree(project_root)
 
     project_root.mkdir(parents=True)
 
@@ -111,7 +82,7 @@ def init_project(
     except ValueError as exc:
         raise InitError(str(exc)) from exc
 
-    skip, rename = _build_skip_and_rename(options.kit, options.data)
+    skip, rename = build_skip_and_rename(options.kit, options.data)
     context = {"project_name": name, "name": name}
     try:
         template_set.render_to(project_root, context, engine, skip=skip, rename=rename)

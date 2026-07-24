@@ -14,16 +14,12 @@ from dataclasses import dataclass
 from importlib import resources
 from pathlib import Path
 
+from behave_gen.config import BehaveGenConfig
 from behave_gen.paths import resolve_project_root
+from behave_gen.project import Project, ProjectError
+from behave_gen.templates.variants import environment_variant
 
 _TEMPLATE_ROOT = "behave_gen.templates.default"
-
-_ENVIRONMENT_VARIANTS = {
-    (False, False): "environment.py",
-    (True, False): "environment_with_kit.py",
-    (False, True): "environment_with_data.py",
-    (True, True): "environment_with_kit_data.py",
-}
 
 # Maps config name -> (package spec, extra group).
 _CONFIG_PACKAGES: dict[str, tuple[str, str]] = {
@@ -53,11 +49,18 @@ def _variant_template_path(variant: str) -> Path:
 
 
 def _project_name(root: Path) -> str:
+    """Read ``project.name`` from ``pyproject.toml`` or fall back to directory name."""
     pyproject = root / "pyproject.toml"
     if not pyproject.is_file():
         return root.name
-    with pyproject.open("rb") as handle:
-        data = tomllib.load(handle)
+    try:
+        text = pyproject.read_text(encoding="utf-8")
+    except UnicodeDecodeError:
+        return root.name
+    try:
+        data = tomllib.loads(text)
+    except tomllib.TOMLDecodeError:
+        return root.name
     name = data.get("project", {}).get("name")
     if isinstance(name, str) and name:
         return name
@@ -67,33 +70,49 @@ def _project_name(root: Path) -> str:
 def add_environment(
     project_root: str | Path,
     options: AddEnvironmentOptions,
+    *,
+    environment_file: str | Path = "environment.py",
 ) -> Path:
     """Rewrite ``environment.py`` with the requested kit/data wiring.
 
     Args:
         project_root: Root of the Behave project.
         options: Add-environment options.
+        environment_file: Path to the environment file, relative to the project
+            root or absolute.
 
     Returns:
         The path to the written ``environment.py``.
 
     Raises:
-        EnvironmentError: If the project root is missing.
+        EnvironmentError: If the project root is missing or the file cannot be
+            written.
     """
     root = Path(project_root).resolve()
     if not root.is_dir():
         raise EnvironmentError(f"Project root not found: {root}")
 
-    variant = _ENVIRONMENT_VARIANTS[(options.kit, options.data)]
+    variant = environment_variant(options.kit, options.data)
     template_path = _variant_template_path(variant)
-    raw = template_path.read_text(encoding="utf-8")
+    try:
+        raw = template_path.read_text(encoding="utf-8")
+    except UnicodeDecodeError as exc:
+        raise EnvironmentError(f"Could not decode template {template_path}: {exc}") from exc
+
     project_name = _project_name(root)
     try:
         rendered = string.Template(raw).substitute(project_name=project_name)
     except KeyError as exc:
-        raise EnvironmentError(f"Missing template variable ${exc.args[0]}.") from exc
+        key = exc.args[0] if exc.args else "<unknown>"
+        raise EnvironmentError(f"Missing template variable ${key}.") from exc
 
-    target = root / "environment.py"
+    target = root / environment_file
+    if target.is_dir() and not target.is_symlink():
+        raise EnvironmentError(f"Cannot overwrite directory: {target}")
+    if target.exists() or target.is_symlink():
+        target.unlink()
+
+    target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(rendered, encoding="utf-8")
     return target
 
@@ -101,11 +120,18 @@ def add_environment(
 def run_add_environment(
     options: AddEnvironmentOptions,
     project_root: str | Path | None = None,
+    *,
+    config: BehaveGenConfig | None = None,
 ) -> int:
     """CLI entry point for ``behave-gen add environment``."""
     root = resolve_project_root(project_root)
     try:
-        path = add_environment(root, options)
+        project = Project.from_root(root, config=config)
+    except ProjectError as exc:
+        print(f"add environment: {exc}", file=sys.stderr)
+        return 1
+    try:
+        path = add_environment(project.root, options, environment_file=project.environment_file)
     except EnvironmentError as exc:
         print(f"add environment: {exc}", file=sys.stderr)
         return 1
@@ -119,12 +145,19 @@ def run_add_environment(
     return 0
 
 
-def add_config(project_root: str | Path, name: str) -> Path:
+def add_config(
+    project_root: str | Path,
+    name: str,
+    *,
+    pyproject: str | Path | None = None,
+) -> Path:
     """Add an ecosystem package to the project's ``pyproject.toml``.
 
     Args:
         project_root: Root of the Behave project.
         name: Config name (``behave-kit`` or ``behave-data``).
+        pyproject: Optional explicit ``pyproject.toml`` path. Defaults to
+            ``<project_root>/pyproject.toml``.
 
     Returns:
         The path to the updated ``pyproject.toml``.
@@ -141,77 +174,97 @@ def add_config(project_root: str | Path, name: str) -> Path:
         available = ", ".join(sorted(_CONFIG_PACKAGES))
         raise EnvironmentError(f"Unknown config {name!r}. Available: {available}.")
 
-    pyproject = root / "pyproject.toml"
-    if not pyproject.is_file():
+    package_spec, extra = _CONFIG_PACKAGES[name]
+    config_path = Path(pyproject) if pyproject is not None else root / "pyproject.toml"
+    if not config_path.is_file():
         raise EnvironmentError(f"pyproject.toml not found in {root}.")
 
-    package_spec, extra = _CONFIG_PACKAGES[name]
-    text = pyproject.read_text(encoding="utf-8")
+    try:
+        text = config_path.read_text(encoding="utf-8")
+    except UnicodeDecodeError as exc:
+        raise EnvironmentError(f"Could not decode {config_path}: {exc}") from exc
 
-    if package_spec in text:
-        # Idempotent: already present.
-        return pyproject
+    try:
+        new_text = _insert_optional_dependency(text, package_spec, extra)
+    except (ValueError, IndexError) as exc:
+        raise EnvironmentError(f"Could not update {config_path}: {exc}") from exc
 
-    new_text = _insert_dependency(text, package_spec, extra)
-    if new_text == text:
-        # Fallback: append to a [project] dependencies block if present.
-        new_text = _append_dependency(text, package_spec)
-    pyproject.write_text(new_text, encoding="utf-8")
-    return pyproject
+    if new_text == text and package_spec not in text:
+        raise EnvironmentError(f"Could not insert {package_spec!r} into {config_path}.")
+
+    config_path.write_text(new_text, encoding="utf-8")
+    return config_path
 
 
-def _insert_dependency(text: str, package_spec: str, extra: str) -> str:
+def _find_section(lines: list[str], header: str, start: int = 0) -> int | None:
+    """Return the index of a TOML table header, or None."""
+    for i in range(start, len(lines)):
+        if lines[i].strip() == header:
+            return i
+    return None
+
+
+def _insert_optional_dependency(  # noqa: PLR0912 - TOML tree walk is inherently branchy.
+    text: str,
+    package_spec: str,
+    extra: str,
+) -> str:
     """Insert ``package_spec`` into the matching optional-dependencies extra.
 
-    If the extra does not exist, it is created. Returns the updated text, or
-    the original text if no insertion point was found.
+    If the section or extra does not exist, it is created. Returns the updated
+    text, or the original text if the dependency is already present.
     """
     lines = text.splitlines(keepends=True)
-    # Find [project.optional-dependencies] section.
-    try:
-        opt_idx = next(
-            i for i, line in enumerate(lines) if line.strip() == "[project.optional-dependencies]"
-        )
-    except StopIteration:
-        # No optional-dependencies section; create one before [project.urls] or end.
+    opt_idx = _find_section(lines, "[project.optional-dependencies]")
+    if opt_idx is None:
         return _create_optional_section(lines, extra, package_spec)
 
-    # Find the extra subsection within optional-dependencies.
     extra_header = f"{extra} = ["
+    section_end: int | None = None
     for i in range(opt_idx + 1, len(lines)):
         stripped = lines[i].strip()
         if stripped.startswith("[") and stripped != "[project.optional-dependencies]":
-            # Reached next table; insert the extra before it.
-            block = [
-                f"{extra} = [\n",
-                f'    "{package_spec}",\n',
-                "]\n",
-                "\n",
-            ]
-            lines[i:i] = block
-            return "".join(lines)
-        if stripped.startswith(extra_header):
-            # Extra exists; insert package_spec if not already present.
-            if package_spec in "".join(lines[i : i + 4]):
-                return text
-            insert_at = i + 1
-            # Skip to first content line.
-            while insert_at < len(lines) and '"]' not in lines[insert_at - 1]:
-                if package_spec in lines[insert_at]:
-                    return text
-                if lines[insert_at].strip() == "]":
-                    break
-                insert_at += 1
-            lines.insert(insert_at, f'    "{package_spec}",\n')
-            return "".join(lines)
-    # Append extra at end of optional-dependencies.
-    lines.append(f"{extra} = [\n")
-    lines.append(f'    "{package_spec}",\n')
-    lines.append("]\n")
+            section_end = i
+            break
+    end_idx = section_end if section_end is not None else len(lines)
+
+    extra_idx: int | None = None
+    for i in range(opt_idx + 1, end_idx):
+        if lines[i].strip().startswith(extra_header):
+            extra_idx = i
+            break
+
+    if extra_idx is None:
+        block = [f"{extra} = [\n", f'    "{package_spec}",\n', "]\n"]
+        if section_end is not None and lines[section_end - 1].strip() != "":
+            block.insert(0, "\n")
+            # Adjust insertion point so the blank line sits before the next table.
+            insert_at = section_end
+        else:
+            insert_at = end_idx
+        lines[insert_at:insert_at] = block
+        return "".join(lines)
+
+    close_idx: int | None = None
+    for j in range(extra_idx + 1, end_idx):
+        if lines[j].strip() == "]":
+            close_idx = j
+            break
+    if close_idx is None:
+        # Malformed array; append at the end of the section as a best effort.
+        lines.insert(end_idx, f'    "{package_spec}",\n')
+        return "".join(lines)
+
+    for j in range(extra_idx + 1, close_idx):
+        if package_spec in lines[j]:
+            return text
+
+    lines.insert(close_idx, f'    "{package_spec}",\n')
     return "".join(lines)
 
 
 def _create_optional_section(lines: list[str], extra: str, package_spec: str) -> str:
+    """Create ``[project.optional-dependencies]`` and the requested extra."""
     block = [
         "\n",
         "[project.optional-dependencies]\n",
@@ -219,33 +272,31 @@ def _create_optional_section(lines: list[str], extra: str, package_spec: str) ->
         f'    "{package_spec}",\n',
         "]\n",
     ]
-    # Insert before [project.urls] if present, else append.
-    for i, line in enumerate(lines):
-        if line.strip() == "[project.urls]":
-            lines[i:i] = block
-            return "".join(lines)
-    lines.extend(block)
+    urls_idx = _find_section(lines, "[project.urls]")
+    if urls_idx is not None:
+        lines[urls_idx:urls_idx] = block
+    else:
+        if lines and not lines[-1].endswith("\n"):
+            lines.append("\n")
+        lines.extend(block)
     return "".join(lines)
 
 
-def _append_dependency(text: str, package_spec: str) -> str:
-    """Fallback: append the package to the main dependencies list."""
-    lines = text.splitlines(keepends=True)
-    for i, line in enumerate(lines):
-        if line.strip() == "dependencies = [":
-            # Insert before the closing bracket.
-            for j in range(i + 1, len(lines)):
-                if lines[j].strip() == "]":
-                    lines.insert(j, f'    "{package_spec}",\n')
-                    return "".join(lines)
-    return text
-
-
-def run_add_config(name: str, project_root: str | Path | None = None) -> int:
+def run_add_config(
+    name: str,
+    project_root: str | Path | None = None,
+    *,
+    config: BehaveGenConfig | None = None,
+) -> int:
     """CLI entry point for ``behave-gen add config``."""
     root = resolve_project_root(project_root)
     try:
-        path = add_config(root, name)
+        project = Project.from_root(root, config=config)
+    except ProjectError as exc:
+        print(f"add config: {exc}", file=sys.stderr)
+        return 1
+    try:
+        path = add_config(project.root, name, pyproject=project.root / "pyproject.toml")
     except EnvironmentError as exc:
         print(f"add config: {exc}", file=sys.stderr)
         return 1

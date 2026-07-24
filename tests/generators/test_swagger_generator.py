@@ -9,6 +9,7 @@ from behave_model import parse_feature
 from typer.testing import CliRunner
 
 from behave_gen.cli.app import app
+from behave_gen.generators.swagger import SwaggerGenerator
 from behave_gen.plugins.swagger import SwaggerParseError, convert_swagger_to_openapi
 
 FIXTURES = Path(__file__).resolve().parent.parent / "fixtures" / "swagger"
@@ -119,3 +120,10 @@ def test_generated_swagger_features_parse(tmp_path: Path, monkeypatch: pytest.Mo
     )
     for feature_file in (tmp_path / "gen" / "features").glob("*.feature"):
         parse_feature(feature_file.read_text(encoding="utf-8"), filename=str(feature_file))
+
+
+def test_swagger_generator_can_handle() -> None:
+    generator = SwaggerGenerator()
+    assert generator.can_handle(FIXTURES / "petstore_swagger2.json") is True
+    assert generator.can_handle(OPENAPI_FIXTURES / "petstore.json") is False
+    assert generator.can_handle(Path("/nonexistent/swagger.json")) is False

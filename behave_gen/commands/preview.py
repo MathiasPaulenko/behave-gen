@@ -12,7 +12,9 @@ from typing import Any
 
 from behave_model import ParseError, parse_feature
 
+from behave_gen.config import BehaveGenConfig
 from behave_gen.paths import resolve_project_root
+from behave_gen.project import Project, ProjectError
 
 
 class PreviewError(Exception):
@@ -36,12 +38,18 @@ def _render_table(table: Any, indent: str) -> list[str]:
     headers = list(getattr(rows[0], "cells", []) or [])
     all_rows = [headers] + [list(getattr(r, "cells", []) or []) for r in rows[1:]]
     widths = [
-        max(len(str(row[i])) if i < len(row) else 0 for row in all_rows)
+        max(
+            len(str(row[i] if row[i] is not None else "")) if i < len(row) else 0
+            for row in all_rows
+        )
         for i in range(len(headers))
     ]
     lines: list[str] = []
     for row in all_rows:
-        cells = " | ".join(str(row[i]).ljust(widths[i]) for i in range(len(widths)))
+        cells = " | ".join(
+            str(row[i] if i < len(row) and row[i] is not None else "").ljust(widths[i])
+            for i in range(len(widths))
+        )
         lines.append(f"{indent}| {cells} |")
     return lines
 
@@ -53,9 +61,10 @@ def _render_step(step: Any, indent: str) -> list[str]:
     lines = [f"{indent}{keyword} {name}".rstrip()]
     # Doc string
     text = getattr(step, "text", None)
-    if text:
+    if isinstance(text, str) and text:
         lines.append(f'{indent}"""')
-        lines.append(text)
+        for text_line in text.splitlines():
+            lines.append(f"{indent}  {text_line}")
         lines.append(f'{indent}"""')
     # Data table
     table = getattr(step, "table", None)
@@ -79,7 +88,8 @@ def _render_scenario(scenario: Any, indent: str) -> list[str]:
     examples = getattr(scenario, "examples", []) or []
     for example in examples:
         ex_name = getattr(example, "name", "")
-        lines.append(f"{step_indent}Examples:{ex_name}")
+        name_part = f" {ex_name}" if ex_name else ""
+        lines.append(f"{step_indent}Examples:{name_part}")
         lines.extend(_render_table(getattr(example, "table", None), step_indent + "  "))
     return lines
 
@@ -92,9 +102,9 @@ def render_feature(feature: Any) -> str:
     lines.append(f"Feature: {name}")
     desc = getattr(feature, "description", None)
     if isinstance(desc, list):
-        lines.extend(str(line) for line in desc)
+        lines.extend(f"  {line}" for line in desc if line is not None)
     elif isinstance(desc, str) and desc:
-        lines.extend(desc.splitlines())
+        lines.extend(f"  {line}" for line in desc.splitlines())
     # Background
     background = getattr(feature, "background", None)
     if background:
@@ -110,12 +120,20 @@ def render_feature(feature: Any) -> str:
 def run_preview(
     feature_path: str,
     project_root: str | Path | None = None,
+    *,
+    config: BehaveGenConfig | None = None,
 ) -> int:
     """CLI entry point for ``behave-gen preview``."""
     root = resolve_project_root(project_root)
+    try:
+        project = Project.from_root(root, config=config)
+    except ProjectError as exc:
+        print(f"preview: {exc}", file=sys.stderr)
+        return 1
+
     path = Path(feature_path)
     if not path.is_absolute():
-        path = (root / path).resolve()
+        path = (project.root / path).resolve()
 
     if not path.is_file():
         print(f"preview: Feature file not found: {path}", file=sys.stderr)

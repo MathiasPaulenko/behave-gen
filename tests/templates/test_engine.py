@@ -108,6 +108,15 @@ def test_template_set_missing_directory_raises(tmp_path: Path) -> None:
         TemplateSet.from_directory(tmp_path / "nope")
 
 
+def test_template_set_render_to_rejects_escaping_rename(tmp_path: Path) -> None:
+    root = tmp_path / "tpl"
+    root.mkdir()
+    (root / "a.txt").write_text("a", encoding="utf-8")
+    ts = TemplateSet.from_directory(root)
+    with pytest.raises(TemplateRenderError, match="Invalid rename path"):
+        ts.render_to(tmp_path / "out", {}, get_engine("string"), rename={"a.txt": "../escape.txt"})
+
+
 # --- Registry ---------------------------------------------------------------
 
 

@@ -14,7 +14,9 @@ from pathlib import Path
 
 from behave_model import ParseError, parse_feature
 
+from behave_gen.config import BehaveGenConfig
 from behave_gen.paths import resolve_project_root, validate_name
+from behave_gen.project import Project, ProjectError
 
 _FEATURE_TEMPLATE_ROOT = "behave_gen.templates.features"
 
@@ -23,16 +25,20 @@ class AddError(Exception):
     """User-facing error raised by add commands."""
 
 
-def _normalize_tags(tags: str | None) -> str:
-    """Normalize a tag string into a ``@tag1 @tag2\\n`` prefix line.
-
-    Accepts comma- or space-separated tags. Returns an empty string when no
-    tags are provided, so the template collapses to ``Feature: ...``.
-    """
+def _tag_parts(tags: str | None) -> tuple[str, ...]:
+    """Split a user tag string into individual tag parts."""
     if not tags:
-        return ""
+        return ()
     cleaned = tags.replace(",", " ")
-    parts = [p for p in cleaned.split() if p]
+    return tuple(p for p in cleaned.split() if p)
+
+
+def _format_tag_line(parts: tuple[str, ...]) -> str:
+    """Render tag parts as a ``@tag1 @tag2\\n`` prefix line.
+
+    Returns an empty string when no tags are provided, so the template
+    collapses to ``Feature: ...``.
+    """
     if not parts:
         return ""
     normalized = [p if p.startswith("@") else f"@{p}" for p in parts]
@@ -70,7 +76,8 @@ def add_feature(
     project_root: str | Path,
     options: AddFeatureOptions,
     *,
-    features_dir: str = "features",
+    features_dir: str | Path = "features",
+    default_tags: tuple[str, ...] = (),
 ) -> Path:
     """Generate a ``.feature`` file inside ``project_root``.
 
@@ -78,6 +85,8 @@ def add_feature(
         project_root: Root of the Behave project.
         options: Add-feature options.
         features_dir: Features directory relative to ``project_root``.
+        default_tags: Default tags from project configuration, merged with
+            tags supplied on ``options``.
 
     Returns:
         The path to the generated feature file.
@@ -103,15 +112,17 @@ def add_feature(
 
     template_path = _feature_template_path(options.template)
     raw = template_path.read_text(encoding="utf-8")
+    all_tags = default_tags + _tag_parts(options.tags)
     context = {
         "feature_name": _humanize(name),
         "name": name,
-        "tags": _normalize_tags(options.tags),
+        "tags": _format_tag_line(all_tags),
     }
     try:
         rendered = string.Template(raw).substitute(context)
     except KeyError as exc:
-        raise AddError(f"Missing template variable ${exc.args[0]}.") from exc
+        key = exc.args[0] if exc.args else "<unknown>"
+        raise AddError(f"Missing template variable ${key}.") from exc
 
     # Validate the generated feature parses cleanly with behave-model.
     try:
@@ -126,11 +137,23 @@ def add_feature(
 def run_add_feature(
     options: AddFeatureOptions,
     project_root: str | Path | None = None,
+    *,
+    config: BehaveGenConfig | None = None,
 ) -> int:
     """CLI entry point for ``behave-gen add feature``."""
     root = resolve_project_root(project_root)
     try:
-        path = add_feature(root, options)
+        project = Project.from_root(root, config=config)
+    except ProjectError as exc:
+        print(f"add feature: {exc}", file=sys.stderr)
+        return 1
+    try:
+        path = add_feature(
+            project.root,
+            options,
+            features_dir=project.features_dir,
+            default_tags=project.config.default_tags,
+        )
     except AddError as exc:
         print(f"add feature: {exc}", file=sys.stderr)
         return 1

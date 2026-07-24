@@ -16,6 +16,10 @@ from behave_gen.paths import resolve_path
 _PROJECT_MARKERS = ("pyproject.toml", "behave.toml")
 
 
+class ProjectError(Exception):
+    """Raised when a project cannot be loaded or configured."""
+
+
 @dataclass(frozen=True, slots=True)
 class Project:
     """Immutable description of a Behave project on disk.
@@ -38,10 +42,20 @@ class Project:
         Args:
             root: Project root directory.
             config: Optional pre-loaded config. Loaded from ``root`` if absent.
+
+        Raises:
+            ProjectError: If ``root`` is not a directory, the configuration is
+                invalid, or it cannot be read.
         """
         root_path = resolve_path(root)
-        resolved_config = config if config is not None else load_config(root_path)
-        return cls(
+        if not root_path.is_dir():
+            raise ProjectError(f"Project root not found: {root_path}")
+        try:
+            resolved_config = config if config is not None else load_config(root_path)
+        except (OSError, ValueError) as exc:
+            raise ProjectError(str(exc)) from exc
+
+        instance = cls(
             root=root_path,
             features_dir=resolve_path(resolved_config.features_dir, root_path),
             steps_dir=resolve_path(resolved_config.steps_dir, root_path),
@@ -50,6 +64,11 @@ class Project:
             templates_dir=resolve_path(resolved_config.templates_dir, root_path),
             config=resolved_config,
         )
+        for attr in ("features_dir", "steps_dir", "environment_file", "templates_dir"):
+            value = getattr(instance, attr)
+            if not value.is_relative_to(root_path):
+                raise ProjectError(f"Config path {attr}={value} escapes project root {root_path}.")
+        return instance
 
 
 def find_project_root(start: str | Path) -> Path:

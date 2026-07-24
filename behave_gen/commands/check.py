@@ -13,8 +13,10 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
+from behave_gen.config import BehaveGenConfig
 from behave_gen.diagnostics import check_extra
 from behave_gen.paths import resolve_project_root
+from behave_gen.project import Project, ProjectError
 
 _UNDEFINED_STEP_RULES = frozenset({"undefined-step", "undefined_step", "missing-step"})
 
@@ -113,6 +115,7 @@ def run_check(
     project_root: str | Path | None = None,
     *,
     fmt: str = "text",
+    config: BehaveGenConfig | None = None,
 ) -> int:
     """CLI entry point for ``behave-gen check``.
 
@@ -120,8 +123,10 @@ def run_check(
     when the report has no errors; otherwise the doctor report's exit code.
     """
     root = resolve_project_root(project_root)
-    if not root.is_dir():
-        print(f"check: Project root not found: {root}", file=sys.stderr)
+    try:
+        project = Project.from_root(root, config=config)
+    except ProjectError as exc:
+        print(f"check: {exc}", file=sys.stderr)
         return 1
 
     fmt_normalized = fmt.lower()
@@ -132,7 +137,7 @@ def run_check(
     status = check_extra("doctor")
     if not status.available:
         report = CheckReport(
-            project=str(root),
+            project=str(project.root),
             available=False,
             install_hint=status.install_hint,
         )
@@ -142,12 +147,12 @@ def run_check(
     import behave_doctor  # noqa: PLC0415 - optional extra imported lazily.
 
     try:
-        raw = behave_doctor.scan_project(root)
+        raw = behave_doctor.scan_project(project.root)
     except Exception as exc:  # noqa: BLE001 - surface doctor failures cleanly.
         print(f"check: behave-doctor failed: {exc}", file=sys.stderr)
         return 1
 
-    report = _build_report_from_doctor(root, raw)
+    report = _build_report_from_doctor(project.root, raw)
     _emit(report, fmt_normalized)
     return report.exit_code
 

@@ -34,6 +34,7 @@ from behave_gen.commands.preview import run_preview
 from behave_gen.commands.stats import run_stats
 from behave_gen.commands.steps import AddStepsOptions, run_add_steps
 from behave_gen.commands.update import UpdateOptions, run_update
+from behave_gen.config import BehaveGenConfig, load_config_at
 
 app = typer.Typer(
     name="behave-gen",
@@ -63,11 +64,23 @@ class _GlobalState:
 
     project: str | None = None
     config: str | None = None
+    config_obj: BehaveGenConfig | None = None
     verbose: bool = False
     dry_run: bool = False
 
 
 state = _GlobalState()
+
+
+def _load_state_config(config_path: str | None) -> BehaveGenConfig | None:
+    """Load an explicit config file for use by subcommands."""
+    if config_path is None:
+        return None
+    try:
+        return load_config_at(config_path)
+    except (OSError, ValueError) as exc:
+        print(f"behave-gen: Invalid config: {exc}", file=sys.stderr)
+        raise typer.Exit(code=1) from exc
 
 
 @app.callback()
@@ -80,6 +93,7 @@ def main_callback(
     """Configure global options shared by all subcommands."""
     state.project = project
     state.config = config
+    state.config_obj = _load_state_config(config)
     state.verbose = verbose
     state.dry_run = dry_run
 
@@ -135,7 +149,7 @@ def add_feature_cmd(
 ) -> None:
     """Add a .feature file to the project."""
     options = AddFeatureOptions(name=name, tags=tags, template=template)
-    code = run_add_feature(options, project_root=state.project)
+    code = run_add_feature(options, project_root=state.project, config=state.config_obj)
     raise typer.Exit(code=code)
 
 
@@ -147,7 +161,7 @@ def add_steps_cmd(
 ) -> None:
     """Add real step definitions from a step library."""
     options = AddStepsOptions(lib=lib)
-    code = run_add_steps(options, project_root=state.project)
+    code = run_add_steps(options, project_root=state.project, config=state.config_obj)
     raise typer.Exit(code=code)
 
 
@@ -162,7 +176,7 @@ def add_environment_cmd(
 ) -> None:
     """Add or update environment.py with ecosystem hooks."""
     options = AddEnvironmentOptions(kit=kit, data=data)
-    code = run_add_environment(options, project_root=state.project)
+    code = run_add_environment(options, project_root=state.project, config=state.config_obj)
     raise typer.Exit(code=code)
 
 
@@ -171,7 +185,7 @@ def add_config_cmd(
     name: Annotated[str, typer.Argument(help="Config to add (behave-kit, behave-data).")],
 ) -> None:
     """Add an ecosystem config to pyproject.toml."""
-    code = run_add_config(name, project_root=state.project)
+    code = run_add_config(name, project_root=state.project, config=state.config_obj)
     raise typer.Exit(code=code)
 
 
@@ -208,7 +222,7 @@ def from_openapi_cmd(
         include_paths=tuple(include_path),
         include_methods=tuple(include_method),
     )
-    code = run_from_openapi(options, project_root=state.project)
+    code = run_from_openapi(options, project_root=state.project, config=state.config_obj)
     raise typer.Exit(code=code)
 
 
@@ -226,7 +240,7 @@ def from_postman_cmd(
 ) -> None:
     """Generate features and steps from a Postman collection."""
     options = FromPostmanOptions(collection=collection, out_dir=out_dir, step_lib=step_lib)
-    code = run_from_postman(options, project_root=state.project)
+    code = run_from_postman(options, project_root=state.project, config=state.config_obj)
     raise typer.Exit(code=code)
 
 
@@ -247,7 +261,7 @@ def from_swagger_cmd(
 ) -> None:
     """Generate features and steps from a Swagger 2.0 spec."""
     options = FromSwaggerOptions(spec=spec, out_dir=out_dir, step_lib=step_lib, tag=tag)
-    code = run_from_swagger(options, project_root=state.project)
+    code = run_from_swagger(options, project_root=state.project, config=state.config_obj)
     raise typer.Exit(code=code)
 
 
@@ -262,7 +276,7 @@ def migrate_cmd(
 ) -> None:
     """Migrate a Cucumber project to Behave."""
     options = MigrateOptions(source=source_dir, out_dir=out_dir)
-    code = run_migrate(options, project_root=state.project)
+    code = run_migrate(options, project_root=state.project, config=state.config_obj)
     raise typer.Exit(code=code)
 
 
@@ -272,7 +286,7 @@ def migrate_cmd(
 @app.command("doctor")
 def doctor_cmd() -> None:
     """Run behave-doctor diagnostics (alias for check)."""
-    code = run_check(project_root=state.project)
+    code = run_check(project_root=state.project, config=state.config_obj)
     raise typer.Exit(code=code)
 
 
@@ -283,7 +297,7 @@ def lint_cmd(
     ),
 ) -> None:
     """Lint .feature files via behave-lint."""
-    code = run_lint(project_root=state.project, fix=fix)
+    code = run_lint(project_root=state.project, fix=fix, config=state.config_obj)
     raise typer.Exit(code=code)
 
 
@@ -294,7 +308,7 @@ def format_cmd(
     ),
 ) -> None:
     """Format .feature files via behave-format."""
-    code = run_format(project_root=state.project, check=check)
+    code = run_format(project_root=state.project, check=check, config=state.config_obj)
     raise typer.Exit(code=code)
 
 
@@ -305,7 +319,7 @@ def check_cmd(
     ),
 ) -> None:
     """Check project health via behave-doctor."""
-    code = run_check(project_root=state.project, fmt=fmt)
+    code = run_check(project_root=state.project, fmt=fmt, config=state.config_obj)
     raise typer.Exit(code=code)
 
 
@@ -317,7 +331,7 @@ def preview_cmd(
     feature: Annotated[str, typer.Argument(help="Path to a .feature file.")],
 ) -> None:
     """Preview a feature file with resolved examples and tables."""
-    code = run_preview(feature, project_root=state.project)
+    code = run_preview(feature, project_root=state.project, config=state.config_obj)
     raise typer.Exit(code=code)
 
 
@@ -328,7 +342,7 @@ def stats_cmd(
     ),
 ) -> None:
     """Report project statistics."""
-    code = run_stats(project_root=state.project, fmt=fmt)
+    code = run_stats(project_root=state.project, fmt=fmt, config=state.config_obj)
     raise typer.Exit(code=code)
 
 
@@ -349,7 +363,7 @@ def update_cmd(
 ) -> None:
     """Re-apply generated environment and step libraries to an existing project."""
     options = UpdateOptions(kit=kit, data=data, force=force)
-    code = run_update(options, project_root=state.project)
+    code = run_update(options, project_root=state.project, config=state.config_obj)
     raise typer.Exit(code=code)
 
 

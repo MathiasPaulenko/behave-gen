@@ -14,7 +14,9 @@ from typing import Any
 
 from behave_model import ParseError, parse_feature
 
+from behave_gen.config import BehaveGenConfig
 from behave_gen.paths import resolve_project_root
+from behave_gen.project import Project, ProjectError
 
 
 class StatsError(Exception):
@@ -38,15 +40,22 @@ class StatsReport:
         return asdict(self)
 
 
-def _collect_stats(project_root: Path) -> StatsReport:
-    """Walk ``project_root/features`` and aggregate statistics."""
-    features_dir = project_root / "features"
+def _collect_stats(project: Project) -> StatsReport:
+    """Walk the project's features directory and aggregate statistics."""
+    features_dir = project.features_dir
     if not features_dir.is_dir():
-        return StatsReport(project=str(project_root), warnings=("No features/ directory found.",))
+        return StatsReport(project=str(project.root), warnings=("No features directory found.",))
 
-    feature_files = sorted(features_dir.rglob("*.feature"))
+    try:
+        feature_files = sorted(features_dir.rglob("*.feature"))
+    except OSError as exc:
+        return StatsReport(
+            project=str(project.root),
+            warnings=(f"Could not read features directory: {exc}",),
+        )
+
     if not feature_files:
-        return StatsReport(project=str(project_root), warnings=("No .feature files found.",))
+        return StatsReport(project=str(project.root), warnings=("No .feature files found.",))
 
     total_features = 0
     total_scenarios = 0
@@ -57,6 +66,11 @@ def _collect_stats(project_root: Path) -> StatsReport:
     warnings: list[str] = []
 
     for feature_file in feature_files:
+        if not feature_file.is_file():
+            continue
+        if not feature_file.is_relative_to(project.root):
+            warnings.append(f"Skipped file outside project root: {feature_file.name}")
+            continue
         try:
             text = feature_file.read_text(encoding="utf-8")
             feature = parse_feature(text, filename=str(feature_file))
@@ -68,7 +82,7 @@ def _collect_stats(project_root: Path) -> StatsReport:
             continue
 
         total_features += 1
-        files.append(str(feature_file.relative_to(project_root)))
+        files.append(str(feature_file.relative_to(project.root)))
         all_tags.update(str(t) for t in getattr(feature, "tags", []) or [])
         for scenario in getattr(feature, "scenarios", []) or []:
             total_scenarios += 1
@@ -79,7 +93,7 @@ def _collect_stats(project_root: Path) -> StatsReport:
             all_tags.update(str(t) for t in getattr(scenario, "tags", []) or [])
 
     return StatsReport(
-        project=str(project_root),
+        project=str(project.root),
         features=total_features,
         scenarios=total_scenarios,
         scenarios_outline=total_outlines,
@@ -94,11 +108,14 @@ def run_stats(
     project_root: str | Path | None = None,
     *,
     fmt: str = "text",
+    config: BehaveGenConfig | None = None,
 ) -> int:
     """CLI entry point for ``behave-gen stats``."""
     root = resolve_project_root(project_root)
-    if not root.is_dir():
-        print(f"stats: Project root not found: {root}", file=sys.stderr)
+    try:
+        project = Project.from_root(root, config=config)
+    except ProjectError as exc:
+        print(f"stats: {exc}", file=sys.stderr)
         return 1
 
     fmt_normalized = fmt.lower()
@@ -106,7 +123,7 @@ def run_stats(
         print(f"stats: Invalid format {fmt!r}. Use 'text' or 'json'.", file=sys.stderr)
         return 1
 
-    report = _collect_stats(root)
+    report = _collect_stats(project)
 
     if fmt_normalized == "json":
         print(json.dumps(report.to_dict(), indent=2, sort_keys=True))
