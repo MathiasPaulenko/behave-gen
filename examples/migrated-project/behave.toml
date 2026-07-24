@@ -1,0 +1,6 @@
+# Behave configuration for migrated-project.
+# See https://github.com/behave/behave for all options.
+
+[behave]
+paths = ["features"]
+default-tags = []
