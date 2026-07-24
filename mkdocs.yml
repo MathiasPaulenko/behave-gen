@@ -1,9 +1,9 @@
 site_name: behave-gen
 site_description: CLI toolkit for scaffolding and evolving Behave BDD projects.
 site_author: Mathias Paulenko
-site_url: https://behave-gen.github.io/behave-gen/
-repo_url: https://github.com/behave-gen/behave-gen
-repo_name: behave-gen/behave-gen
+site_url: https://mathiaspaulenko.github.io/behave-gen/
+repo_url: https://github.com/MathiasPaulenko/behave-gen
+repo_name: MathiasPaulenko/behave-gen
 edit_uri: edit/main/docs/
 
 theme:

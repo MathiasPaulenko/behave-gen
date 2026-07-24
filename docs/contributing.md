@@ -1,12 +1,12 @@
 # Contributing
 
-Contributions are welcome! See [CONTRIBUTING.md](https://github.com/behave-gen/behave-gen/blob/main/CONTRIBUTING.md)
+Contributions are welcome! See [CONTRIBUTING.md](https://github.com/MathiasPaulenko/behave-gen/blob/main/CONTRIBUTING.md)
 for full guidelines.
 
 ## Quick start
 
 ```bash
-git clone https://github.com/behave-gen/behave-gen.git
+git clone https://github.com/MathiasPaulenko/behave-gen.git
 cd behave-gen
 pip install -e ".[dev,docs]"
 pre-commit install

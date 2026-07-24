@@ -53,7 +53,7 @@ Usage: behave-gen [OPTIONS] COMMAND [ARGS]...
 ## Development install
 
 ```bash
-git clone https://github.com/behave-gen/behave-gen.git
+git clone https://github.com/MathiasPaulenko/behave-gen.git
 cd behave-gen
 pip install -e ".[dev,docs]"
 pre-commit install

@@ -63,7 +63,7 @@ Use behave-gen as a pre-commit hook:
 
 ```yaml
 repos:
-  - repo: https://github.com/behave-gen/behave-gen
+  - repo: https://github.com/MathiasPaulenko/behave-gen
     rev: v0.1.0
     hooks:
       - id: behave-gen-check

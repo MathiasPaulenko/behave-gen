@@ -61,11 +61,11 @@ all = [
 behave-gen = "behave_gen.cli.app:run"
 
 [project.urls]
-Homepage = "https://github.com/behave-gen/behave-gen"
-Documentation = "https://behave-gen.github.io/behave-gen/"
-Repository = "https://github.com/behave-gen/behave-gen"
-Issues = "https://github.com/behave-gen/behave-gen/issues"
-Changelog = "https://github.com/behave-gen/behave-gen/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/MathiasPaulenko/behave-gen"
+Documentation = "https://mathiaspaulenko.github.io/behave-gen/"
+Repository = "https://github.com/MathiasPaulenko/behave-gen"
+Issues = "https://github.com/MathiasPaulenko/behave-gen/issues"
+Changelog = "https://github.com/MathiasPaulenko/behave-gen/blob/main/CHANGELOG.md"
 
 [tool.hatch.build.targets.wheel]
 packages = ["behave_gen"]

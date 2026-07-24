@@ -46,5 +46,5 @@ behave
 - [Installation](installation.md) — how to install behave-gen and its extras.
 - [Quick Start](quickstart.md) — a guided tour of the main workflows.
 - [CLI Reference](cli.md) — every command and its options.
-- [Examples](https://github.com/behave-gen/behave-gen/tree/main/examples) —
+- [Examples](https://github.com/MathiasPaulenko/behave-gen/tree/main/examples) —
   ready-to-run projects in the repository.

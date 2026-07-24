@@ -2,8 +2,8 @@
 
 A CLI toolkit for scaffolding and evolving Behave BDD projects.
 
-[![CI](https://github.com/behave-gen/behave-gen/actions/workflows/ci.yml/badge.svg)](https://github.com/behave-gen/behave-gen/actions/workflows/ci.yml)
-[![Docs](https://github.com/behave-gen/behave-gen/actions/workflows/docs.yml/badge.svg)](https://behave-gen.github.io/behave-gen/)
+[![CI](https://github.com/MathiasPaulenko/behave-gen/actions/workflows/ci.yml/badge.svg)](https://github.com/MathiasPaulenko/behave-gen/actions/workflows/ci.yml)
+[![Docs](https://github.com/MathiasPaulenko/behave-gen/actions/workflows/docs.yml/badge.svg)](https://mathiaspaulenko.github.io/behave-gen/)
 [![PyPI](https://img.shields.io/pypi/v/behave-gen)](https://pypi.org/project/behave-gen/)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
@@ -142,7 +142,7 @@ behave_gen/
 ## Development
 
 ```bash
-git clone https://github.com/behave-gen/behave-gen.git
+git clone https://github.com/MathiasPaulenko/behave-gen.git
 cd behave-gen
 pip install -e ".[dev]"
 pre-commit install
