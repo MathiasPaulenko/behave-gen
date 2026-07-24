@@ -74,7 +74,7 @@ def _operation_id(op: dict[str, Any], method: str, path: str) -> str:
     if isinstance(oid, str) and oid:
         return oid
     cleaned = path.strip("/").replace("/", "_").replace("{", "").replace("}", "")
-    return f"{method}_{cleaned}" or method
+    return f"{method}_{cleaned}" if cleaned else method
 
 
 def _summary(op: dict[str, Any]) -> str:
