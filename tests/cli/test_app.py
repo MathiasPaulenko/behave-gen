@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pytest
@@ -10,6 +11,14 @@ from typer.testing import CliRunner
 from behave_gen.cli.app import app
 
 runner = CliRunner()
+
+_ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
+
+
+def _strip_ansi(text: str) -> str:
+    """Remove ANSI escape codes from *text*."""
+    return _ANSI_RE.sub("", text)
+
 
 EXPECTED_COMMANDS = [
     "add",
@@ -31,7 +40,7 @@ EXPECTED_COMMANDS = [
 def test_help_lists_all_commands() -> None:
     result = runner.invoke(app, ["--help"])
     assert result.exit_code == 0
-    output = result.stdout
+    output = _strip_ansi(result.stdout)
     for command in EXPECTED_COMMANDS:
         assert command in output, f"missing {command!r} in --help"
 
@@ -39,10 +48,11 @@ def test_help_lists_all_commands() -> None:
 def test_help_lists_global_options() -> None:
     result = runner.invoke(app, ["--help"])
     assert result.exit_code == 0
-    assert "--project" in result.stdout
-    assert "--config" in result.stdout
-    assert "--verbose" in result.stdout
-    assert "--dry-run" in result.stdout
+    output = _strip_ansi(result.stdout)
+    assert "--project" in output
+    assert "--config" in output
+    assert "--verbose" in output
+    assert "--dry-run" in output
 
 
 @pytest.mark.parametrize("command", EXPECTED_COMMANDS)
