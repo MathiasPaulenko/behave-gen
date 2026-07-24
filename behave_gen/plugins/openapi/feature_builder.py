@@ -10,12 +10,19 @@ from collections import defaultdict
 
 from behave_gen.plugins.openapi.parser import OpenApiOperation, OpenApiSpec
 
+# Avoid exceeding common filesystem filename limits while leaving room for the
+# ``.feature`` extension and any suffix added by callers.
+_MAX_FEATURE_FILENAME_LEN = 200
+
 
 def _safe_filename(path: str) -> str:
     """Convert an OpenAPI path into a filesystem-safe feature name."""
     cleaned = path.strip("/").replace("/", "_").replace("{", "").replace("}", "")
     cleaned = "".join(ch if ch.isalnum() or ch in {"_", "-"} else "_" for ch in cleaned)
-    return cleaned or "root"
+    cleaned = cleaned or "root"
+    if len(cleaned) > _MAX_FEATURE_FILENAME_LEN:
+        cleaned = cleaned[:_MAX_FEATURE_FILENAME_LEN]
+    return cleaned
 
 
 def _humanize(path: str) -> str:
@@ -39,11 +46,11 @@ def _format_header_tags(tags: tuple[str, ...]) -> str:
 
 
 def _collect_tags(tag: str | None, default_tags: tuple[str, ...]) -> tuple[str, ...]:
-    """Merge an optional single tag with configured default tags."""
+    """Merge an optional tag string with configured default tags."""
     parts: list[str] = []
     parts.extend(default_tags)
     if tag:
-        parts.append(tag)
+        parts.extend(tag.split())
     return tuple(parts)
 
 

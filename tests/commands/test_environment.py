@@ -66,6 +66,12 @@ def test_add_environment_missing_root_raises(tmp_path: Path) -> None:
         add_environment(tmp_path / "nope", AddEnvironmentOptions(kit=True))
 
 
+def test_add_environment_rejects_environment_file_outside_root(tmp_path: Path) -> None:
+    root = _make_project(tmp_path)
+    with pytest.raises(EnvironmentError, match="must be inside project root"):
+        add_environment(root, AddEnvironmentOptions(), environment_file="../escape.py")
+
+
 def test_add_environment_is_valid_python(tmp_path: Path) -> None:
     root = _make_project(tmp_path)
     add_environment(root, AddEnvironmentOptions(kit=True, data=True))
@@ -115,6 +121,21 @@ def test_add_config_idempotent(tmp_path: Path) -> None:
     assert text_after_first == text_after_second
 
 
+def test_add_config_does_not_confuse_similar_package_specs(tmp_path: Path) -> None:
+    """A package spec must match exactly, not just as a substring."""
+    root = _make_project(tmp_path)
+    (root / "pyproject.toml").write_text(
+        '[project]\nname = "proj"\n\n'
+        '[project.optional-dependencies]\nkit = ["behave-kit-extra>=1.0"]\n',
+        encoding="utf-8",
+    )
+    add_config(root, "behave-kit")
+    text = (root / "pyproject.toml").read_text(encoding="utf-8")
+    assert text.count("behave-kit") == 2
+    assert "behave-kit-extra>=1.0" in text
+    assert "behave-kit>=1.0" in text
+
+
 def test_add_config_behave_data(tmp_path: Path) -> None:
     root = _make_project(tmp_path)
     path = add_config(root, "behave-data")
@@ -133,6 +154,14 @@ def test_add_config_missing_pyproject_raises(tmp_path: Path) -> None:
     (root / "pyproject.toml").unlink()
     with pytest.raises(EnvironmentError, match="pyproject.toml not found"):
         add_config(root, "behave-kit")
+
+
+def test_add_config_rejects_pyproject_outside_root(tmp_path: Path) -> None:
+    root = _make_project(tmp_path)
+    outside = tmp_path / "outside" / "pyproject.toml"
+    outside.parent.mkdir()
+    with pytest.raises(EnvironmentError, match="must be inside project root"):
+        add_config(root, "behave-kit", pyproject=outside)
 
 
 def test_add_config_pyproject_still_parses(tmp_path: Path) -> None:

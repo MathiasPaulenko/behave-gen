@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from behave_gen.generators.base import GenerationResult
+from behave_gen.paths import safe_write_text
 from behave_gen.plugins.openapi import build_features, build_steps, parse_openapi
 from behave_gen.plugins.openapi.parser import OpenApiParseError
 
@@ -79,7 +80,7 @@ class OpenApiGenerator:
         written_features: list[Path] = []
         for filename, content in feature_map.items():
             target = features_dir / f"{filename}.feature"
-            target.write_text(content, encoding="utf-8")
+            safe_write_text(target, content)
             written_features.append(target)
 
         written_steps: list[Path] = []
@@ -87,7 +88,7 @@ class OpenApiGenerator:
             steps_dir.mkdir(parents=True, exist_ok=True)
             steps_text = build_steps(spec, project_name=project_name)
             steps_file = steps_dir / "http_steps.py"
-            steps_file.write_text(steps_text, encoding="utf-8")
+            safe_write_text(steps_file, steps_text)
             written_steps.append(steps_file)
 
         warnings: list[str] = []

@@ -80,3 +80,26 @@ def test_as_dict_roundtrip() -> None:
     config = BehaveGenConfig.default()
     restored = BehaveGenConfig(**config.as_dict())
     assert restored == config
+
+
+def test_load_config_default_tags_flattens_strings_with_whitespace(tmp_path: Path) -> None:
+    (tmp_path / "pyproject.toml").write_text(
+        '[tool.behave-gen]\ndefault_tags = ["smoke api", "regression"]\n', encoding="utf-8"
+    )
+    config = load_config(tmp_path)
+    assert config.default_tags == ("smoke", "api", "regression")
+
+
+def test_config_normalizes_default_tags_on_construction() -> None:
+    config = BehaveGenConfig(default_tags=("a b", "c"))
+    assert config.default_tags == ("a", "b", "c")
+
+
+def test_config_with_overrides_normalizes_default_tags() -> None:
+    config = BehaveGenConfig.default().with_overrides(default_tags=("x y", "z"))
+    assert config.default_tags == ("x", "y", "z")
+
+
+def test_config_rejects_non_string_default_tags() -> None:
+    with pytest.raises(ValueError, match="must be strings"):
+        BehaveGenConfig(default_tags=("ok", 123))  # type: ignore[arg-type]

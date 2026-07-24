@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -74,6 +75,20 @@ def test_add_feature_existing_file_raises(tmp_path: Path) -> None:
         add_feature(root, AddFeatureOptions(name="login"))
 
 
+def test_add_feature_existing_symlink_raises(tmp_path: Path) -> None:
+    """A pre-existing symlink must be treated as an existing file."""
+    root = _make_project(tmp_path)
+    outside = tmp_path / "outside.feature"
+    outside.write_text("Feature: Outside\n", encoding="utf-8")
+    link = root / "features" / "login.feature"
+    try:
+        os.symlink(outside, link)
+    except OSError:
+        pytest.skip("Symlinks are not supported in this environment")
+    with pytest.raises(AddError, match="already exists"):
+        add_feature(root, AddFeatureOptions(name="login"))
+
+
 def test_add_feature_invalid_name_raises(tmp_path: Path) -> None:
     root = _make_project(tmp_path)
     with pytest.raises(AddError, match="Invalid feature name"):
@@ -119,6 +134,12 @@ def test_add_feature_rejects_path_traversal(tmp_path: Path) -> None:
     root = _make_project(tmp_path)
     with pytest.raises(AddError, match="Invalid feature name"):
         add_feature(root, AddFeatureOptions(name="../escape"))
+
+
+def test_add_feature_rejects_features_dir_outside_root(tmp_path: Path) -> None:
+    root = _make_project(tmp_path)
+    with pytest.raises(AddError, match="escapes project root"):
+        add_feature(root, AddFeatureOptions(name="login"), features_dir="../escape")
 
 
 def test_generated_feature_behave_dry_run(tmp_path: Path) -> None:

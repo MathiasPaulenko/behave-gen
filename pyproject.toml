@@ -13,7 +13,7 @@ license-files = ["LICENSE"]
 authors = [{ name = "Mathias Paulenko" }]
 keywords = ["behave", "bdd", "gherkin", "scaffolding", "codegen", "openapi", "cucumber"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
@@ -70,7 +70,7 @@ Changelog = "https://github.com/MathiasPaulenko/behave-gen/blob/main/CHANGELOG.m
 packages = ["behave_gen"]
 
 [tool.hatch.build.targets.sdist]
-include = ["behave_gen", "tests", "README.md", "CHANGELOG.md", "LICENSE"]
+include = ["behave_gen", "README.md", "CHANGELOG.md", "LICENSE"]
 
 [tool.ruff]
 target-version = "py311"
@@ -83,6 +83,7 @@ select = ["E", "F", "I", "UP", "B", "C4", "SIM", "PL"]
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["PLR2004"]
 "behave_gen/cli/**" = ["B008", "PLR0913", "PLR0917"]
+"behave_gen/cli/app.py" = ["PLC0415"]
 
 [tool.mypy]
 python_version = "3.11"
@@ -90,7 +91,7 @@ strict = true
 warn_unreachable = true
 warn_redundant_casts = true
 warn_unused_ignores = true
-exclude = ["behave_gen/templates/", "tests/"]
+exclude = ["behave_gen/templates/default/", "tests/"]
 
 [[tool.mypy.overrides]]
 module = [
@@ -114,3 +115,4 @@ source = ["behave_gen"]
 [tool.coverage.report]
 show_missing = true
 skip_covered = false
+fail_under = 80

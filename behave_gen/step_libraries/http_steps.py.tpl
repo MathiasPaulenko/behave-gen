@@ -9,12 +9,13 @@ from __future__ import annotations
 
 import json as _json
 import urllib.error
+import urllib.parse
 import urllib.request
 from typing import Any
 
 from behave import given, then, when
 
-BASE_URL = "http://localhost:8080"
+DEFAULT_BASE_URL = "http://localhost:8080"
 DEFAULT_TIMEOUT = 10
 
 
@@ -22,6 +23,7 @@ class _HttpContext:
     """Per-context state shared across HTTP steps."""
 
     def __init__(self) -> None:
+        self.base_url: str = DEFAULT_BASE_URL
         self.last_response: _Response | None = None
         self.last_status: int = 0
         self.last_body: Any = None
@@ -54,7 +56,10 @@ def _request(
     data: bytes | None = None
     final_headers = dict(headers or {})
     if body is not None:
-        data = _json.dumps(body).encode("utf-8")
+        try:
+            data = _json.dumps(body).encode("utf-8")
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"Body is not JSON-serializable: {exc}") from exc
         final_headers.setdefault("Content-Type", "application/json")
     req = urllib.request.Request(url, data=data, method=method, headers=final_headers)
     try:
@@ -64,22 +69,37 @@ def _request(
         return _Response(exc.code, exc.read(), dict(exc.headers))
 
 
-def _full_url(path: str) -> str:
-    return path if path.startswith("http") else f"{BASE_URL}{path}"
+def _full_url(path: str, context: Any) -> str:
+    """Resolve ``path`` against the per-context base URL.
+
+    Absolute URLs are accepted only when they use the ``http`` or ``https``
+    scheme to avoid accidental misuse of other protocols.
+    """
+    if path.startswith("http://") or path.startswith("https://"):
+        return path
+    if "://" in path:
+        parsed = urllib.parse.urlparse(path)
+        raise ValueError(f"Unsupported URL scheme {parsed.scheme!r}: {path}")
+    ctx = _ensure_context(context)
+    return f"{ctx.base_url.rstrip('/')}/{path.lstrip('/')}"
 
 
 @given('the base URL is "{url}"')
 def set_base_url(context: Any, url: str) -> None:
     """Set the base URL used by subsequent HTTP steps."""
-    global BASE_URL
-    BASE_URL = url.rstrip("/")
+    if "://" in url:
+        parsed = urllib.parse.urlparse(url)
+        if parsed.scheme not in {"http", "https"}:
+            raise ValueError(f"Unsupported URL scheme {parsed.scheme!r}: {url}")
+    ctx = _ensure_context(context)
+    ctx.base_url = url.rstrip("/")
 
 
 @when('I send a {method} request to "{path}"')
 def send_request(context: Any, method: str, path: str) -> None:
     """Send an HTTP request with the given method to ``path``."""
     ctx = _ensure_context(context)
-    response = _request(method.upper(), _full_url(path))
+    response = _request(method.upper(), _full_url(path, context))
     ctx.last_response = response
     ctx.last_status = response.status
     try:
@@ -93,8 +113,11 @@ def send_request_with_body(context: Any, method: str, path: str) -> None:
     """Send an HTTP request using the doc string or table as the JSON body."""
     ctx = _ensure_context(context)
     body = context.text or "{}"
-    payload: Any = _json.loads(body)
-    response = _request(method.upper(), _full_url(path), body=payload)
+    try:
+        payload: Any = _json.loads(body)
+    except _json.JSONDecodeError as exc:
+        raise ValueError(f"Invalid JSON in scenario body: {exc}") from exc
+    response = _request(method.upper(), _full_url(path, context), body=payload)
     ctx.last_response = response
     ctx.last_status = response.status
     try:

@@ -53,10 +53,30 @@ def test_run_migrate_options_dataclass() -> None:
     assert opts.out_dir == "out"
 
 
+def test_run_migrate_rejects_relative_source_outside_project_root(tmp_path: Path) -> None:
+    project = init_project(tmp_path, InitOptions(name="proj"))
+    rc = run_migrate(
+        MigrateOptions(source="../cucumber"),
+        project_root=project,
+    )
+    assert rc == 1
+
+
 def test_run_migrate_outside_project_root_fails(tmp_path: Path) -> None:
     project = init_project(tmp_path, InitOptions(name="proj"))
     rc = run_migrate(
         MigrateOptions(source=str(FIXTURES), out_dir=str(tmp_path)),
+        project_root=project,
+    )
+    assert rc == 1
+
+
+def test_run_migrate_destination_file_blocking_fails(tmp_path: Path) -> None:
+    project = init_project(tmp_path, InitOptions(name="proj"))
+    (project / "migrated" / "features").parent.mkdir(parents=True)
+    (project / "migrated" / "features").write_text("", encoding="utf-8")
+    rc = run_migrate(
+        MigrateOptions(source=str(FIXTURES)),
         project_root=project,
     )
     assert rc == 1

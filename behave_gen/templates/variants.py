@@ -6,6 +6,8 @@ module centralizes the mapping so scaffolding and update commands stay in sync.
 
 from __future__ import annotations
 
+__all__ = ["build_skip_and_rename", "environment_variant"]
+
 # environment.py variants selected by the --kit / --data flags.
 _ENVIRONMENT_VARIANTS = {
     (False, False): "environment.py",

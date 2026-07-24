@@ -18,6 +18,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Protocol
 
+from behave_gen.paths import safe_write_text
+
 if TYPE_CHECKING:
     import jinja2
 
@@ -62,10 +64,7 @@ class StringTemplateEngine:
             text = src.read_text(encoding="utf-8")
         except UnicodeDecodeError as exc:
             raise TemplateRenderError(f"Could not decode {src} as UTF-8: {exc}") from exc
-        dst.write_text(
-            self.render(text, context, filename=str(src)),
-            encoding="utf-8",
-        )
+        safe_write_text(dst, self.render(text, context, filename=str(src)))
 
 
 @dataclass(frozen=True, slots=True)
@@ -89,10 +88,7 @@ class Jinja2Engine:
             text = src.read_text(encoding="utf-8")
         except UnicodeDecodeError as exc:
             raise TemplateRenderError(f"Could not decode {src} as UTF-8: {exc}") from exc
-        dst.write_text(
-            self.render(text, context, filename=str(src)),
-            encoding="utf-8",
-        )
+        safe_write_text(dst, self.render(text, context, filename=str(src)))
 
 
 def jinja2_engine() -> Jinja2Engine:
@@ -111,7 +107,7 @@ def jinja2_engine() -> Jinja2Engine:
     env = _jinja2.Environment(
         keep_trailing_newline=True,
         undefined=_jinja2.StrictUndefined,
-        autoescape=False,
+        autoescape=False,  # nosec B701 # noqa: S701 - templates generate source files, not HTML.
     )
     return Jinja2Engine(environment=env)
 

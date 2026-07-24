@@ -7,6 +7,7 @@ Reports counts of features, scenarios, and steps in a project using
 from __future__ import annotations
 
 import json
+import os
 import sys
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -40,6 +41,18 @@ class StatsReport:
         return asdict(self)
 
 
+def _feature_files(directory: Path) -> list[Path]:
+    """List ``.feature`` files under ``directory`` without following symlinks."""
+    files: list[Path] = []
+    for root, _dirs, filenames in os.walk(directory, followlinks=False):
+        for filename in filenames:
+            if filename.endswith(".feature"):
+                path = Path(root) / filename
+                if not path.is_symlink():
+                    files.append(path)
+    return files
+
+
 def _collect_stats(project: Project) -> StatsReport:
     """Walk the project's features directory and aggregate statistics."""
     features_dir = project.features_dir
@@ -47,7 +60,7 @@ def _collect_stats(project: Project) -> StatsReport:
         return StatsReport(project=str(project.root), warnings=("No features directory found.",))
 
     try:
-        feature_files = sorted(features_dir.rglob("*.feature"))
+        feature_files = _feature_files(features_dir)
     except OSError as exc:
         return StatsReport(
             project=str(project.root),
@@ -66,23 +79,30 @@ def _collect_stats(project: Project) -> StatsReport:
     warnings: list[str] = []
 
     for feature_file in feature_files:
-        if not feature_file.is_file():
+        try:
+            resolved = feature_file.resolve()
+        except (OSError, RuntimeError):
             continue
-        if not feature_file.is_relative_to(project.root):
+        if not resolved.is_file():
+            continue
+        if not resolved.is_relative_to(project.root):
             warnings.append(f"Skipped file outside project root: {feature_file.name}")
             continue
         try:
-            text = feature_file.read_text(encoding="utf-8")
-            feature = parse_feature(text, filename=str(feature_file))
+            text = resolved.read_text(encoding="utf-8")
+            feature = parse_feature(text, filename=str(resolved))
         except ParseError as exc:
             warnings.append(f"Parse error in {feature_file.name}: {exc}")
             continue
         except UnicodeDecodeError as exc:
             warnings.append(f"Encoding error in {feature_file.name}: {exc}")
             continue
+        except OSError as exc:
+            warnings.append(f"Could not read {feature_file.name}: {exc}")
+            continue
 
         total_features += 1
-        files.append(str(feature_file.relative_to(project.root)))
+        files.append(str(resolved.relative_to(project.root)))
         all_tags.update(str(t) for t in getattr(feature, "tags", []) or [])
         for scenario in getattr(feature, "scenarios", []) or []:
             total_scenarios += 1

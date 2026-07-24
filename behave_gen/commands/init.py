@@ -58,18 +58,30 @@ def init_project(
         raise InitError(f"Invalid project name: {exc}") from exc
 
     parent = Path(target_dir).resolve()
-    parent.mkdir(parents=True, exist_ok=True)
+    if parent.exists() and not parent.is_dir():
+        raise InitError(f"Target path exists but is not a directory: {parent}")
+    try:
+        parent.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        raise InitError(f"Could not create target directory {parent}: {exc}") from exc
+
     project_root = parent / name
 
     if project_root.exists() or project_root.is_symlink():
         if not options.force:
             raise InitError(f"Directory already exists: {project_root}. Use --force to overwrite.")
-        if project_root.is_symlink() or project_root.is_file():
-            project_root.unlink()
-        else:
-            shutil.rmtree(project_root)
+        try:
+            if project_root.is_symlink() or project_root.is_file():
+                project_root.unlink()
+            else:
+                shutil.rmtree(project_root)
+        except OSError as exc:
+            raise InitError(f"Could not remove existing project {project_root}: {exc}") from exc
 
-    project_root.mkdir(parents=True)
+    try:
+        project_root.mkdir(parents=True)
+    except OSError as exc:
+        raise InitError(f"Could not create project directory {project_root}: {exc}") from exc
 
     reg = registry if registry is not None else default_registry()
     try:

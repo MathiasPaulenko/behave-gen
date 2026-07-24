@@ -12,6 +12,8 @@ import string
 from importlib import resources
 from pathlib import Path
 
+__all__ = ["build_http_step_module", "http_template"]
+
 
 def http_template() -> str:
     """Return the built-in HTTP step library template source."""
@@ -19,11 +21,16 @@ def http_template() -> str:
         return Path(p).read_text(encoding="utf-8")
 
 
+def _escape_for_source(value: str) -> str:
+    """Escape backslashes and double quotes so a value is safe in a Python string."""
+    return value.replace("\\", "\\\\").replace('"', '\\"')
+
+
 def build_http_step_module(project_name: str = "generated_project") -> str:
     """Render the generic HTTP step library for the given project name."""
     raw = http_template()
     try:
-        return string.Template(raw).substitute(project_name=project_name)
+        return string.Template(raw).substitute(project_name=_escape_for_source(project_name))
     except KeyError as exc:
         key = exc.args[0] if exc.args else "<unknown>"
         raise ValueError(f"Missing template variable ${key}.") from exc

@@ -6,13 +6,13 @@ Prints an install hint and exits gracefully when the extra is missing.
 
 from __future__ import annotations
 
-import subprocess
+import subprocess  # nosec B404
 import sys
 from pathlib import Path
 
 from behave_gen.config import BehaveGenConfig
 from behave_gen.diagnostics import check_extra
-from behave_gen.paths import resolve_project_root
+from behave_gen.paths import resolve_path, resolve_project_root
 from behave_gen.project import Project, ProjectError
 
 
@@ -45,10 +45,25 @@ def run_format(
         print(f"behave-format is not installed. Install it with: {status.install_hint}")
         return 0
 
-    targets = paths if paths else [str(project.features_dir)]
-    cmd = [sys.executable, "-m", "behave_format", *targets]
+    if paths:
+        targets: list[str] = []
+        for p in paths:
+            target = resolve_path(p, project.root)
+            if not target.is_relative_to(project.root):
+                print(
+                    f"format: Path {target} must be inside project root {project.root}",
+                    file=sys.stderr,
+                )
+                return 1
+            targets.append(str(target))
+    else:
+        targets = [str(project.features_dir)]
+
+    cmd = [sys.executable, "-m", "behave_format"]
     if check:
         cmd.append("--check")
+    cmd.append("--")
+    cmd.extend(targets)
 
-    proc = subprocess.run(cmd, cwd=project.root, check=False)
+    proc = subprocess.run(cmd, cwd=project.root, check=False)  # nosec B603 # noqa: S603
     return proc.returncode

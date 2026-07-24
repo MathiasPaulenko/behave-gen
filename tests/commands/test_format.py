@@ -65,6 +65,26 @@ def test_format_install_hint_when_missing(tmp_path: Path, monkeypatch: pytest.Mo
     assert code == 0
 
 
+def test_format_rejects_paths_outside_project_root(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = _make_project(tmp_path)
+    monkeypatch.setattr(
+        "behave_gen.commands.format.check_extra",
+        lambda extra: __import__(
+            "behave_gen.diagnostics", fromlist=["DependencyStatus"]
+        ).DependencyStatus(name="format", available=True, install_hint=""),
+    )
+
+    def _fail_if_called(*_args, **_kwargs):  # pragma: no cover - defensive.
+        pytest.fail("subprocess.run should not be called for paths outside the project root")
+
+    monkeypatch.setattr("behave_gen.commands.format.subprocess.run", _fail_if_called)
+    outside = tmp_path / "outside.feature"
+    outside.write_text("Feature: X\n", encoding="utf-8")
+    assert run_format(root, paths=[str(outside)]) == 1
+
+
 @pytest.mark.skipif(is_available("format"), reason="behave-format is installed")
 def test_format_hint_when_not_installed(tmp_path: Path) -> None:
     root = _make_project(tmp_path)

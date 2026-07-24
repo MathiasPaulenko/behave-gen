@@ -12,6 +12,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+# Reject specs larger than 10 MiB before reading them into memory.
+_MAX_SPEC_SIZE_BYTES = 10 * 1024 * 1024
+
 
 class OpenApiParseError(Exception):
     """Raised when an OpenAPI document cannot be parsed."""
@@ -38,11 +41,26 @@ class OpenApiSpec:
     operations: tuple[OpenApiOperation, ...] = field(default_factory=tuple)
 
 
-def _load_document(source: Path) -> dict[str, Any]:
+def _read_spec(source: Path) -> str:
+    """Read the spec file, rejecting files that exceed the size limit."""
     try:
-        text = source.read_text(encoding="utf-8")
+        size = source.stat().st_size
+    except OSError as exc:
+        raise OpenApiParseError(f"Could not inspect {source}: {exc}") from exc
+    if size > _MAX_SPEC_SIZE_BYTES:
+        raise OpenApiParseError(
+            f"Spec too large: {source} ({size} bytes). Max allowed: {_MAX_SPEC_SIZE_BYTES}."
+        )
+    try:
+        return source.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise OpenApiParseError(f"Could not read {source}: {exc}") from exc
     except UnicodeDecodeError as exc:
         raise OpenApiParseError(f"Could not decode {source} as UTF-8: {exc}") from exc
+
+
+def _load_document(source: Path) -> dict[str, Any]:
+    text = _read_spec(source)
     suffix = source.suffix.lower()
     if suffix in {".yaml", ".yml"}:
         try:
@@ -52,9 +70,15 @@ def _load_document(source: Path) -> dict[str, Any]:
                 "YAML support requires the 'openapi' extra. "
                 "Install it with: pip install behave-gen[openapi]"
             ) from exc
-        loaded = yaml.safe_load(text)
+        try:
+            loaded = yaml.safe_load(text)
+        except Exception as exc:  # noqa: BLE001 - yaml can raise many exception types.
+            raise OpenApiParseError(f"Could not parse {source}: {exc}") from exc
     elif suffix == ".json":
-        loaded = json.loads(text)
+        try:
+            loaded = json.loads(text)
+        except json.JSONDecodeError as exc:
+            raise OpenApiParseError(f"Could not parse {source}: {exc}") from exc
     else:
         # Try JSON first, then YAML.
         try:

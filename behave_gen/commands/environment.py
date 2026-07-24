@@ -7,6 +7,7 @@ project's ``pyproject.toml`` dependencies idempotently.
 
 from __future__ import annotations
 
+import re
 import string
 import sys
 import tomllib
@@ -15,7 +16,7 @@ from importlib import resources
 from pathlib import Path
 
 from behave_gen.config import BehaveGenConfig
-from behave_gen.paths import resolve_project_root
+from behave_gen.paths import resolve_project_root, safe_write_text
 from behave_gen.project import Project, ProjectError
 from behave_gen.templates.variants import environment_variant
 
@@ -40,12 +41,17 @@ class AddEnvironmentOptions:
     data: bool = False
 
 
-def _variant_template_path(variant: str) -> Path:
+def _load_environment_template(variant: str) -> str:
     with resources.as_file(resources.files(_TEMPLATE_ROOT).joinpath(variant)) as p:
         path = Path(p)
-    if not path.is_file():
-        raise EnvironmentError(f"Environment template not found: {variant}.")
-    return path
+        if not path.is_file():
+            raise EnvironmentError(f"Environment template not found: {variant}.")
+        try:
+            return path.read_text(encoding="utf-8")
+        except OSError as exc:
+            raise EnvironmentError(f"Could not read template {variant}: {exc}") from exc
+        except UnicodeDecodeError as exc:
+            raise EnvironmentError(f"Could not decode template {variant}: {exc}") from exc
 
 
 def _project_name(root: Path) -> str:
@@ -55,7 +61,7 @@ def _project_name(root: Path) -> str:
         return root.name
     try:
         text = pyproject.read_text(encoding="utf-8")
-    except UnicodeDecodeError:
+    except (OSError, UnicodeDecodeError):
         return root.name
     try:
         data = tomllib.loads(text)
@@ -93,27 +99,40 @@ def add_environment(
         raise EnvironmentError(f"Project root not found: {root}")
 
     variant = environment_variant(options.kit, options.data)
-    template_path = _variant_template_path(variant)
-    try:
-        raw = template_path.read_text(encoding="utf-8")
-    except UnicodeDecodeError as exc:
-        raise EnvironmentError(f"Could not decode template {template_path}: {exc}") from exc
+    raw = _load_environment_template(variant)
 
     project_name = _project_name(root)
     try:
-        rendered = string.Template(raw).substitute(project_name=project_name)
+        rendered = string.Template(raw).substitute(
+            project_name=project_name.replace("\\", "\\\\").replace('"', '\\"'),
+        )
     except KeyError as exc:
         key = exc.args[0] if exc.args else "<unknown>"
         raise EnvironmentError(f"Missing template variable ${key}.") from exc
 
-    target = root / environment_file
+    target = Path(environment_file)
+    if not target.is_absolute():
+        target = root / environment_file
+    target = target.resolve()
+    if not target.is_relative_to(root):
+        raise EnvironmentError(f"Environment file {target} must be inside project root {root}.")
     if target.is_dir() and not target.is_symlink():
         raise EnvironmentError(f"Cannot overwrite directory: {target}")
-    if target.exists() or target.is_symlink():
-        target.unlink()
+    try:
+        if target.exists() or target.is_symlink():
+            target.unlink()
+    except OSError as exc:
+        raise EnvironmentError(f"Could not remove existing file {target}: {exc}") from exc
 
-    target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(rendered, encoding="utf-8")
+    try:
+        target.parent.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        raise EnvironmentError(f"Could not create parent directory {target.parent}: {exc}") from exc
+
+    try:
+        safe_write_text(target, rendered)
+    except OSError as exc:
+        raise EnvironmentError(f"Could not write environment file {target}: {exc}") from exc
     return target
 
 
@@ -176,11 +195,18 @@ def add_config(
 
     package_spec, extra = _CONFIG_PACKAGES[name]
     config_path = Path(pyproject) if pyproject is not None else root / "pyproject.toml"
+    config_path = config_path.resolve()
+    if not config_path.is_relative_to(root):
+        raise EnvironmentError(
+            f"pyproject.toml path {config_path} must be inside project root {root}."
+        )
     if not config_path.is_file():
         raise EnvironmentError(f"pyproject.toml not found in {root}.")
 
     try:
         text = config_path.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise EnvironmentError(f"Could not read {config_path}: {exc}") from exc
     except UnicodeDecodeError as exc:
         raise EnvironmentError(f"Could not decode {config_path}: {exc}") from exc
 
@@ -192,7 +218,10 @@ def add_config(
     if new_text == text and package_spec not in text:
         raise EnvironmentError(f"Could not insert {package_spec!r} into {config_path}.")
 
-    config_path.write_text(new_text, encoding="utf-8")
+    try:
+        safe_write_text(config_path, new_text)
+    except OSError as exc:
+        raise EnvironmentError(f"Could not write {config_path}: {exc}") from exc
     return config_path
 
 
@@ -255,8 +284,9 @@ def _insert_optional_dependency(  # noqa: PLR0912 - TOML tree walk is inherently
         lines.insert(end_idx, f'    "{package_spec}",\n')
         return "".join(lines)
 
+    existing_pattern = re.compile(rf'^\s*"{re.escape(package_spec)}"\s*,?\s*$')
     for j in range(extra_idx + 1, close_idx):
-        if package_spec in lines[j]:
+        if existing_pattern.search(lines[j]):
             return text
 
     lines.insert(close_idx, f'    "{package_spec}",\n')

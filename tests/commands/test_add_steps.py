@@ -69,6 +69,13 @@ def test_add_steps_missing_project_raises(tmp_path: Path) -> None:
         add_steps(tmp_path / "nope", AddStepsOptions(lib="http"))
 
 
+def test_add_steps_rejects_output_file_outside_steps(tmp_path: Path) -> None:
+    root = _make_project(tmp_path)
+    outside = tmp_path / "outside.py"
+    with pytest.raises(AddStepsError, match="must be inside steps directory"):
+        add_steps(root, AddStepsOptions(lib="http"), output_file=outside)
+
+
 def test_add_steps_cli(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     root = _make_project(tmp_path)
     monkeypatch.chdir(root)

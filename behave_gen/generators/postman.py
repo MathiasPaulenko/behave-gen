@@ -10,6 +10,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from behave_gen.generators.base import GenerationResult
+from behave_gen.paths import safe_write_text
 from behave_gen.plugins.postman import build_features, parse_postman
 from behave_gen.plugins.postman.parser import PostmanParseError
 from behave_gen.step_libraries import build_http_step_module
@@ -50,7 +51,7 @@ class PostmanGenerator:
         written_features: list[Path] = []
         for filename, content in feature_map.items():
             target = features_dir / f"{filename}.feature"
-            target.write_text(content, encoding="utf-8")
+            safe_write_text(target, content)
             written_features.append(target)
 
         written_steps: list[Path] = []
@@ -58,7 +59,7 @@ class PostmanGenerator:
             steps_dir.mkdir(parents=True, exist_ok=True)
             steps_text = build_http_step_module(project_name=out_dir.name)
             steps_file = steps_dir / "http_steps.py"
-            steps_file.write_text(steps_text, encoding="utf-8")
+            safe_write_text(steps_file, steps_text)
             written_steps.append(steps_file)
 
         warnings: list[str] = []

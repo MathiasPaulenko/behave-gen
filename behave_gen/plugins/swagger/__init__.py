@@ -17,16 +17,34 @@ from behave_gen.plugins.openapi.parser import OpenApiParseError, OpenApiSpec, pa
 
 __all__ = ["SwaggerParseError", "convert_swagger_to_openapi"]
 
+# Reject specs larger than 10 MiB before reading them into memory.
+_MAX_SPEC_SIZE_BYTES = 10 * 1024 * 1024
+
 
 class SwaggerParseError(Exception):
     """Raised when a Swagger 2.0 document cannot be converted."""
 
 
-def _load_swagger(source: Path) -> dict[str, Any]:
+def _read_swagger(source: Path) -> str:
+    """Read the Swagger spec file, rejecting files that exceed the size limit."""
     try:
-        text = source.read_text(encoding="utf-8")
+        size = source.stat().st_size
+    except OSError as exc:
+        raise SwaggerParseError(f"Could not inspect {source}: {exc}") from exc
+    if size > _MAX_SPEC_SIZE_BYTES:
+        raise SwaggerParseError(
+            f"Spec too large: {source} ({size} bytes). Max allowed: {_MAX_SPEC_SIZE_BYTES}."
+        )
+    try:
+        return source.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise SwaggerParseError(f"Could not read {source}: {exc}") from exc
     except UnicodeDecodeError as exc:
         raise SwaggerParseError(f"Could not decode {source} as UTF-8: {exc}") from exc
+
+
+def _load_swagger(source: Path) -> dict[str, Any]:
+    text = _read_swagger(source)
     suffix = source.suffix.lower()
     if suffix in {".yaml", ".yml"}:
         try:
@@ -93,8 +111,9 @@ def convert_swagger_to_openapi(source: str | Path) -> OpenApiSpec:
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp_path = Path(tmpdir) / "converted.json"
         try:
-            json.dump(converted, tmp_path.open("w", encoding="utf-8"))
-        except (TypeError, ValueError) as exc:
+            with tmp_path.open("w", encoding="utf-8") as handle:
+                json.dump(converted, handle)
+        except (OSError, TypeError, ValueError) as exc:
             raise SwaggerParseError(f"Failed to serialize converted spec: {exc}") from exc
 
         try:

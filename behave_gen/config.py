@@ -11,6 +11,8 @@ from dataclasses import dataclass, field, fields
 from pathlib import Path
 from typing import Any
 
+__all__ = ["BehaveGenConfig", "load_config", "load_config_at"]
+
 CONFIG_TABLE = "behave-gen"
 """TOML table name under ``[tool.*]`` where behave-gen config lives."""
 
@@ -48,6 +50,11 @@ class BehaveGenConfig:
             raise ValueError(
                 f"Invalid template_engine {self.template_engine!r}. Valid values: {valid}."
             )
+        object.__setattr__(
+            self,
+            "default_tags",
+            tuple(_normalize_tags(self.default_tags)),
+        )
 
     @classmethod
     def default(cls) -> BehaveGenConfig:
@@ -70,7 +77,7 @@ class BehaveGenConfig:
 def load_config_at(path: str | Path) -> BehaveGenConfig:
     """Load behave-gen configuration from an explicit ``pyproject.toml`` path.
 
-    Falls back to :meth:`BehaveGenConfig.default` when the file or the
+    Falls back to :meth:`BehaveGenConfig.default` when the
     ``[tool.behave-gen]`` table is missing.
 
     Args:
@@ -81,8 +88,8 @@ def load_config_at(path: str | Path) -> BehaveGenConfig:
 
     Raises:
         FileNotFoundError: If ``path`` does not exist.
-        ValueError: If the file cannot be decoded as TOML or contains invalid
-            configuration values.
+        ValueError: If the file cannot be read or decoded as TOML, or contains
+            invalid configuration values.
     """
     pyproject = Path(path)
     if not pyproject.is_file():
@@ -91,6 +98,8 @@ def load_config_at(path: str | Path) -> BehaveGenConfig:
     try:
         with pyproject.open("rb") as handle:
             data = tomllib.load(handle)
+    except OSError as exc:
+        raise ValueError(f"Could not read {pyproject}: {exc}") from exc
     except tomllib.TOMLDecodeError as exc:
         raise ValueError(f"Could not parse {pyproject}: {exc}") from exc
 
@@ -162,9 +171,24 @@ def _coerce_str(value: Any, key: str) -> str:  # noqa: ANN401
     return value
 
 
+def _normalize_tags(tags: tuple[str, ...]) -> tuple[str, ...]:
+    """Normalize a tuple of tag strings, splitting whitespace and dropping empties."""
+    parts: list[str] = []
+    for tag in tags:
+        if not isinstance(tag, str):
+            raise ValueError(f"default_tags must be strings, got {type(tag).__name__}.")
+        for part in tag.split():
+            if part:
+                parts.append(part)
+    return tuple(parts)
+
+
 def _coerce_tags(value: Any, key: str) -> tuple[str, ...]:  # noqa: ANN401
+    parts: list[str] = []
     if isinstance(value, str):
-        return tuple(value.split())
-    if isinstance(value, list) and all(isinstance(item, str) for item in value):
-        return tuple(value)
-    raise ValueError(f"[tool.{CONFIG_TABLE}] {key} must be a string or list of strings.")
+        parts = value.split()
+    elif isinstance(value, list) and all(isinstance(item, str) for item in value):
+        parts = [tag for item in value for tag in item.split()]
+    else:
+        raise ValueError(f"[tool.{CONFIG_TABLE}] {key} must be a string or list of strings.")
+    return tuple(part for part in parts if part)

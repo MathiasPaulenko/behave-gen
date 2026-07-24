@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import textwrap
 from pathlib import Path
 
@@ -104,3 +105,16 @@ def test_stats_report_to_dict() -> None:
     assert d["features"] == 2
     assert d["scenarios"] == 5
     assert d["steps"] == 10
+
+
+def test_stats_skips_symlinked_feature_outside_root(tmp_path: Path) -> None:
+    root = _make_project(tmp_path)
+    outside = tmp_path / "outside.feature"
+    outside.write_text("Feature: Outside\n  Scenario: x\n    Given a\n", encoding="utf-8")
+    link = root / "features" / "outside.feature"
+    try:
+        os.symlink(outside, link)
+    except OSError:
+        pytest.skip("Symlinks are not supported in this environment")
+    code = run_stats(root)
+    assert code == 0

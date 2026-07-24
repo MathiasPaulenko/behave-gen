@@ -79,7 +79,7 @@ def _build_report_from_doctor(project_root: Path, raw_report: Any) -> CheckRepor
             "severity": str(getattr(diag, "severity", "")),
             "message": getattr(diag, "message", ""),
             "file": str(getattr(diag, "file", "")),
-            "line": getattr(diag, "line", 0),
+            "line": int(getattr(diag, "line", 0) or 0),
             "suggestion": getattr(diag, "suggestion", ""),
         }
         errors.append(entry)

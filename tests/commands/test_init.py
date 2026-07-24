@@ -137,3 +137,9 @@ def test_init_rejects_path_traversal(tmp_path: Path) -> None:
 def test_init_rejects_absolute_name(tmp_path: Path) -> None:
     with pytest.raises(InitError, match="Invalid project name"):
         init_project(tmp_path, InitOptions(name="C:/unsafe"))
+
+
+def test_init_target_dir_existing_file_raises(tmp_path: Path) -> None:
+    (tmp_path / "not-a-dir").write_text("text", encoding="utf-8")
+    with pytest.raises(InitError, match="Target path exists but is not a directory"):
+        init_project(tmp_path / "not-a-dir", InitOptions(name="proj"))

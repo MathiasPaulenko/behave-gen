@@ -11,16 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Tests
 
-- 289 tests: unit, integration, and end-to-end covering all commands and workflows.
+- Unit, integration, and end-to-end tests covering all commands and workflows.
 - E2E tests in `tests/e2e/` covering full workflows:
-  `init` → `add feature` → `add steps` → `behave --dry-run`,
-  `from-openapi` (YAML + JSON), `from-postman`, `from-swagger`,
-  `migrate` (Cucumber), `check`/`stats`/`preview`, `add environment`/
-  `add config`/`update`, and generated code quality (ruff, behave-model parse).
-
-### Tests
-
-- 58 end-to-end integration tests in `tests/e2e/` covering full workflows:
   `init` → `add feature` → `add steps` → `behave --dry-run`,
   `from-openapi` (YAML + JSON), `from-postman`, `from-swagger`,
   `migrate` (Cucumber), `check`/`stats`/`preview`, `add environment`/

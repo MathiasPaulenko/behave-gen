@@ -9,6 +9,7 @@ import pytest
 from behave_gen.plugins.postman.parser import (
     PostmanCollection,
     PostmanParseError,
+    _resolve_url,
     parse_postman,
     url_to_path,
 )
@@ -66,3 +67,10 @@ def test_parse_invalid_collection_raises() -> None:
 def test_url_to_path_extracts_path() -> None:
     assert url_to_path("https://api.example.com/users/123") == "/users/123"
     assert url_to_path("https://api.example.com") == "/"
+    assert url_to_path("") == "/"
+
+
+def test_resolve_url_handles_none_and_missing_url() -> None:
+    assert _resolve_url(None) == ""
+    assert _resolve_url({}) == ""
+    assert _resolve_url("https://api.example.com/users") == "https://api.example.com/users"

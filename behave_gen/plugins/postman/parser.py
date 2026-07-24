@@ -14,6 +14,9 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
+# Reject collections larger than 10 MiB before reading them into memory.
+_MAX_COLLECTION_SIZE_BYTES = 10 * 1024 * 1024
+
 
 class PostmanParseError(Exception):
     """Raised when a Postman collection cannot be parsed."""
@@ -40,6 +43,8 @@ class PostmanCollection:
 
 def _resolve_url(url_field: Any) -> str:
     """Resolve a Postman URL field (string or object) to a plain URL string."""
+    if url_field is None:
+        return ""
     if isinstance(url_field, str):
         return url_field
     if isinstance(url_field, dict):
@@ -95,7 +100,19 @@ def parse_postman(source: str | Path) -> PostmanCollection:
         raise PostmanParseError(f"Postman collection not found: {path}")
 
     try:
+        size = path.stat().st_size
+    except OSError as exc:
+        raise PostmanParseError(f"Could not inspect {path}: {exc}") from exc
+    if size > _MAX_COLLECTION_SIZE_BYTES:
+        raise PostmanParseError(
+            f"Collection too large: {path} ({size} bytes). "
+            f"Max allowed: {_MAX_COLLECTION_SIZE_BYTES}."
+        )
+
+    try:
         text = path.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise PostmanParseError(f"Could not read {path}: {exc}") from exc
     except UnicodeDecodeError as exc:
         raise PostmanParseError(f"Could not decode {path} as UTF-8: {exc}") from exc
     try:

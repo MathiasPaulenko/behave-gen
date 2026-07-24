@@ -14,7 +14,7 @@ from importlib import resources
 from pathlib import Path
 
 from behave_gen.config import BehaveGenConfig
-from behave_gen.paths import resolve_project_root
+from behave_gen.paths import resolve_project_root, safe_write_text
 from behave_gen.project import Project, ProjectError
 
 _STEP_LIB_ROOT = "behave_gen.step_libraries"
@@ -37,12 +37,17 @@ class AddStepsOptions:
     lib: str
 
 
-def _template_path(template_name: str) -> Path:
+def _load_step_template(template_name: str) -> str:
     with resources.as_file(resources.files(_STEP_LIB_ROOT).joinpath(template_name)) as p:
         path = Path(p)
-    if not path.is_file():
-        raise AddStepsError(f"Step library template not found: {template_name}.")
-    return path
+        if not path.is_file():
+            raise AddStepsError(f"Step library template not found: {template_name}.")
+        try:
+            return path.read_text(encoding="utf-8")
+        except OSError as exc:
+            raise AddStepsError(f"Could not read template {template_name}: {exc}") from exc
+        except UnicodeDecodeError as exc:
+            raise AddStepsError(f"Could not decode template {template_name}: {exc}") from exc
 
 
 def _available_libraries() -> tuple[str, ...]:
@@ -80,18 +85,30 @@ def add_steps(
     if not root.is_dir():
         raise AddStepsError(f"Project root not found: {root}")
 
-    steps = root / steps_dir
-    steps.mkdir(parents=True, exist_ok=True)
+    steps = (root / steps_dir).resolve()
+    if not steps.is_relative_to(root):
+        raise AddStepsError(f"Steps directory {steps} escapes project root {root}.")
+    try:
+        steps.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        raise AddStepsError(f"Could not create steps directory {steps}: {exc}") from exc
 
     template_name, output_name = _BUILTIN_LIBRARIES[options.lib]
-    target = Path(output_file) if output_file is not None else steps / output_name
+    if output_file is None:
+        target = steps / output_name
+    else:
+        target = Path(output_file)
+        if not target.is_absolute():
+            target = steps / output_file
+        target = target.resolve()
+    if not target.is_relative_to(steps):
+        raise AddStepsError(f"Step file {target} must be inside steps directory {steps}.")
     if target.exists() or target.is_symlink():
         raise AddStepsError(
             f"Step file already exists: {target}. Remove it or choose another library."
         )
 
-    template_path = _template_path(template_name)
-    raw = template_path.read_text(encoding="utf-8")
+    raw = _load_step_template(template_name)
     project_name = root.name
     try:
         rendered = string.Template(raw).substitute(project_name=project_name)
@@ -99,7 +116,10 @@ def add_steps(
         key = exc.args[0] if exc.args else "<unknown>"
         raise AddStepsError(f"Missing template variable ${key}.") from exc
 
-    target.write_text(rendered, encoding="utf-8")
+    try:
+        safe_write_text(target, rendered)
+    except OSError as exc:
+        raise AddStepsError(f"Could not write step file {target}: {exc}") from exc
     return target
 
 

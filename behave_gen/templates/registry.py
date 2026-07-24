@@ -52,14 +52,9 @@ class TemplateRegistry:
         return name in self._sets
 
 
-def _builtin_path(name: str) -> Path:
-    """Return the on-disk path to a built-in template set."""
-    with resources.as_file(resources.files(_BUILTIN_ROOT).joinpath(name)) as p:
-        return Path(p)
-
-
 def default_registry() -> TemplateRegistry:
     """Build a registry pre-loaded with built-in template sets."""
     registry = TemplateRegistry()
-    registry.register_directory(_builtin_path("default"), name="default")
+    default_root = resources.files(_BUILTIN_ROOT).joinpath("default")
+    registry.register(TemplateSet.from_package(default_root, name="default"))
     return registry

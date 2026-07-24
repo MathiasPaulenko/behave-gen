@@ -59,6 +59,26 @@ def test_lint_install_hint_when_missing(tmp_path: Path, monkeypatch: pytest.Monk
     assert code == 0
 
 
+def test_lint_rejects_paths_outside_project_root(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = _make_project(tmp_path)
+    monkeypatch.setattr(
+        "behave_gen.commands.lint.check_extra",
+        lambda extra: __import__(
+            "behave_gen.diagnostics", fromlist=["DependencyStatus"]
+        ).DependencyStatus(name="lint", available=True, install_hint=""),
+    )
+
+    def _fail_if_called(*_args, **_kwargs):  # pragma: no cover - defensive.
+        pytest.fail("subprocess.run should not be called for paths outside the project root")
+
+    monkeypatch.setattr("behave_gen.commands.lint.subprocess.run", _fail_if_called)
+    outside = tmp_path / "outside.feature"
+    outside.write_text("Feature: X\n", encoding="utf-8")
+    assert run_lint(root, paths=[str(outside)]) == 1
+
+
 @pytest.mark.skipif(is_available("lint"), reason="behave-lint is installed")
 def test_lint_hint_when_not_installed(tmp_path: Path) -> None:
     root = _make_project(tmp_path)

@@ -11,12 +11,17 @@ from collections import defaultdict
 
 from behave_gen.plugins.postman.parser import PostmanCollection, PostmanRequest, url_to_path
 
+_MAX_FEATURE_FILENAME_LEN = 200
+
 
 def _safe_filename(folder: str) -> str:
     """Convert a folder name into a filesystem-safe feature name."""
     cleaned = folder.replace("/", "_").replace("\\", "_").replace(" ", "_")
     cleaned = "".join(ch if ch.isalnum() or ch in {"_", "-"} else "_" for ch in cleaned)
-    return cleaned or "root"
+    cleaned = cleaned or "root"
+    if len(cleaned) > _MAX_FEATURE_FILENAME_LEN:
+        cleaned = cleaned[:_MAX_FEATURE_FILENAME_LEN]
+    return cleaned
 
 
 def _format_header_tags(tags: tuple[str, ...]) -> str:
@@ -28,11 +33,11 @@ def _format_header_tags(tags: tuple[str, ...]) -> str:
 
 
 def _collect_tags(tag: str | None, default_tags: tuple[str, ...]) -> tuple[str, ...]:
-    """Merge an optional single tag with configured default tags."""
+    """Merge an optional tag string with configured default tags."""
     parts: list[str] = []
     parts.extend(default_tags)
     if tag:
-        parts.append(tag)
+        parts.extend(tag.split())
     return tuple(parts)
 
 

@@ -40,7 +40,7 @@ def test_preview_prints_feature(tmp_path: Path) -> None:
         + "\n",
         encoding="utf-8",
     )
-    code = run_preview(str(feature))
+    code = run_preview(str(feature), project_root=root)
     assert code == 0
 
 
@@ -48,9 +48,21 @@ def test_preview_invalid_feature_returns_one(tmp_path: Path) -> None:
     root = _make_project(tmp_path)
     feature = root / "features" / "bad.feature"
     feature.write_text("not valid gherkin at all\n", encoding="utf-8")
-    code = run_preview(str(feature))
+    code = run_preview(str(feature), project_root=root)
     # behave-model may be lenient; either 0 or 1 is acceptable as long as no crash.
     assert code in (0, 1)
+
+
+def test_preview_relative_path_outside_root_returns_one(tmp_path: Path) -> None:
+    root = _make_project(tmp_path)
+    assert run_preview("../escape.feature", project_root=root) == 1
+
+
+def test_preview_absolute_path_outside_root_returns_one(tmp_path: Path) -> None:
+    root = _make_project(tmp_path)
+    outside = tmp_path / "outside.feature"
+    outside.write_text("Feature: Outside\n", encoding="utf-8")
+    assert run_preview(str(outside), project_root=root) == 1
 
 
 def test_preview_cli(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

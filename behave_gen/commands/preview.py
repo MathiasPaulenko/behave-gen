@@ -117,6 +117,26 @@ def render_feature(feature: Any) -> str:
     return "\n".join(lines) + "\n"
 
 
+def _resolve_preview_path(feature_path: str, root: Path) -> tuple[Path | None, str | None]:
+    """Resolve and validate a feature path for preview.
+
+    Returns the resolved path and ``None`` on success, or ``None`` and an error
+    message on failure.
+    """
+    path = Path(feature_path)
+    if not path.is_absolute():
+        path = root / path
+    try:
+        path = path.resolve()
+    except (OSError, RuntimeError) as exc:
+        return None, f"Could not resolve feature path {path}: {exc}"
+    if not path.is_relative_to(root):
+        return None, f"Feature file must be inside project root: {path}"
+    if not path.is_file():
+        return None, f"Feature file not found: {path}"
+    return path, None
+
+
 def run_preview(
     feature_path: str,
     project_root: str | Path | None = None,
@@ -131,18 +151,18 @@ def run_preview(
         print(f"preview: {exc}", file=sys.stderr)
         return 1
 
-    path = Path(feature_path)
-    if not path.is_absolute():
-        path = (project.root / path).resolve()
-
-    if not path.is_file():
-        print(f"preview: Feature file not found: {path}", file=sys.stderr)
+    path, error = _resolve_preview_path(feature_path, project.root)
+    if error is not None:
+        print(f"preview: {error}", file=sys.stderr)
+        return 1
+    if path is None:
         return 1
 
     try:
         text = path.read_text(encoding="utf-8")
-    except UnicodeDecodeError as exc:
-        print(f"preview: Could not decode {path} as UTF-8: {exc}", file=sys.stderr)
+    except (OSError, UnicodeDecodeError) as exc:
+        kind = "read" if isinstance(exc, OSError) else "decode as UTF-8"
+        print(f"preview: Could not {kind} {path}: {exc}", file=sys.stderr)
         return 1
     try:
         feature = parse_feature(text, filename=str(path))
@@ -150,6 +170,5 @@ def run_preview(
         print(f"preview: Parse error: {exc}", file=sys.stderr)
         return 1
 
-    output = render_feature(feature)
-    print(output)
+    print(render_feature(feature))
     return 0

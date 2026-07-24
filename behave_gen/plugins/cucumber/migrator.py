@@ -7,9 +7,13 @@ are not translated; the report suggests using ``behave-gen add steps``.
 
 from __future__ import annotations
 
+import fnmatch
+import os
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
+
+from behave_gen.paths import safe_write_text
 
 
 class MigrationError(Exception):
@@ -55,27 +59,48 @@ def _within_source(path: Path, source: Path) -> bool:
 
 
 def _find_feature_files(source: Path) -> list[Path]:
-    """Find all ``.feature`` files under ``source``."""
-    if source.is_file() and source.suffix == ".feature":
+    """Find all ``.feature`` files under ``source`` without following symlinks."""
+    try:
+        source_is_file = source.is_file()
+        source_is_dir = source.is_dir()
+    except OSError:
+        return []
+    if source_is_file and source.suffix == ".feature":
         return [source]
-    if not source.is_dir():
+    if not source_is_dir:
         return []
     files: list[Path] = []
-    for p in source.rglob("*.feature"):
-        if _within_source(p, source):
-            files.append(p.resolve())
+    try:
+        for root, _dirs, filenames in os.walk(source, followlinks=False):
+            for filename in filenames:
+                if filename.endswith(".feature"):
+                    p = Path(root) / filename
+                    if _within_source(p, source):
+                        files.append(p.resolve())
+    except OSError:
+        return []
     return sorted(files)
 
 
 def _find_step_definitions(source: Path) -> list[Path]:
     """Find Java step definition files (best-effort heuristic)."""
-    if not source.is_dir():
+    try:
+        source_is_dir = source.is_dir()
+    except OSError:
         return []
+    if not source_is_dir:
+        return []
+    patterns = ("*Steps*.java", "*StepDefs*.java", "*StepDefinitions*.java")
     candidates: list[Path] = []
-    for pattern in ("**/*Steps*.java", "**/*StepDefs*.java", "**/*StepDefinitions*.java"):
-        for p in source.rglob(pattern):
-            if _within_source(p, source) and p.is_file():
-                candidates.append(p.resolve())
+    try:
+        for root, _dirs, filenames in os.walk(source, followlinks=False):
+            for filename in filenames:
+                if any(fnmatch.fnmatch(filename, pat) for pat in patterns):
+                    p = Path(root) / filename
+                    if _within_source(p, source) and not p.is_symlink() and p.is_file():
+                        candidates.append(p.resolve())
+    except OSError:
+        return []
     return sorted(set(candidates))
 
 
@@ -105,7 +130,12 @@ def migrate_cucumber(source: str | Path, out_dir: str | Path) -> MigrationReport
 
     dest = Path(out_dir).resolve()
     features_dir = dest / "features"
-    features_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        features_dir.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        raise MigrationError(
+            f"Could not create destination directory {features_dir}: {exc}"
+        ) from exc
 
     written: list[Path] = []
     skipped: list[str] = []
@@ -115,16 +145,21 @@ def migrate_cucumber(source: str | Path, out_dir: str | Path) -> MigrationReport
         # Single file source: use just the filename; otherwise preserve layout.
         rel = Path(feature_file.name) if src.is_file() else feature_file.relative_to(src)
         target = features_dir / rel
-        target.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            target.parent.mkdir(parents=True, exist_ok=True)
+        except OSError as exc:
+            skipped.append(str(rel))
+            warnings.append(f"Could not create parent directory for {rel}: {exc}")
+            continue
         try:
             text = feature_file.read_text(encoding="utf-8")
-        except UnicodeDecodeError as exc:
+        except (OSError, UnicodeDecodeError) as exc:
             skipped.append(str(rel))
             warnings.append(f"Could not read {rel}: {exc}")
             continue
         cleaned = _clean_feature_text(text)
         try:
-            target.write_text(cleaned, encoding="utf-8")
+            safe_write_text(target, cleaned)
         except OSError as exc:
             skipped.append(str(rel))
             warnings.append(f"Could not write {rel}: {exc}")

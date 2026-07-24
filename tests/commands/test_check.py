@@ -36,6 +36,20 @@ def test_diagnostics_is_available_boolean() -> None:
     assert isinstance(is_available("doctor"), bool)
 
 
+def test_diagnostics_openapi_extra_maps_to_yaml_module() -> None:
+    # openapi/swagger extras depend on the PyPI distribution ``pyyaml``, whose
+    # importable module is named ``yaml``. The hint must still reference the extra.
+    status = check_extra("openapi")
+    assert status.name == "openapi"
+    assert "behave-gen[openapi]" in status.install_hint or status.available is True
+
+
+def test_diagnostics_check_extra_unknown_extra_returns_unavailable() -> None:
+    status = check_extra("not-a-real-extra")
+    assert status.name == "not-a-real-extra"
+    assert status.available is False
+
+
 def test_suggest_for_undefined_http() -> None:
     assert "http" in _suggest_for_undefined("I send a GET request")
 

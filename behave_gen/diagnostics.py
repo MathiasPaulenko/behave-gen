@@ -8,15 +8,17 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+__all__ = ["DependencyStatus", "check_extra", "install_hint", "is_available"]
+
 EXTRAS: dict[str, str] = {
-    "doctor": "behave-doctor",
-    "lint": "behave-lint",
-    "format": "behave-format",
-    "kit": "behave-kit",
-    "data": "behave-data",
+    "doctor": "behave_doctor",
+    "lint": "behave_lint",
+    "format": "behave_format",
+    "kit": "behave_kit",
+    "data": "behave_data",
     "jinja2": "jinja2",
-    "openapi": "pyyaml",
-    "swagger": "pyyaml",
+    "openapi": "yaml",
+    "swagger": "yaml",
 }
 
 
@@ -38,7 +40,13 @@ def check_extra(extra: str) -> DependencyStatus:
     Returns:
         A :class:`DependencyStatus` with an install hint when missing.
     """
-    package = EXTRAS.get(extra, extra)
+    if extra not in EXTRAS:
+        return DependencyStatus(
+            name=extra,
+            available=False,
+            install_hint=f"Unknown extra {extra!r}. Known extras: {', '.join(sorted(EXTRAS))}.",
+        )
+    package = EXTRAS[extra]
     try:
         __import__(package.replace("-", "_"))
     except ImportError:

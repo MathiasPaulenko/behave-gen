@@ -53,6 +53,21 @@ def test_parse_invalid_document_raises() -> None:
         parse_openapi(FIXTURES / "invalid.txt")
 
 
+def test_parse_invalid_yaml_raises(tmp_path: Path) -> None:
+    pytest.importorskip("yaml")
+    bad = tmp_path / "bad.yaml"
+    bad.write_text("not: [", encoding="utf-8")
+    with pytest.raises(OpenApiParseError, match="Could not parse"):
+        parse_openapi(bad)
+
+
+def test_parse_invalid_json_raises(tmp_path: Path) -> None:
+    bad = tmp_path / "bad.json"
+    bad.write_text("{not json", encoding="utf-8")
+    with pytest.raises(OpenApiParseError, match="Could not parse"):
+        parse_openapi(bad)
+
+
 def test_parse_swagger_2_raises() -> None:
     with pytest.raises(OpenApiParseError, match="Unsupported OpenAPI version"):
         parse_openapi(FIXTURES / "swagger2.json")

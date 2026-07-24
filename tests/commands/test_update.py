@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import pytest
@@ -21,6 +22,23 @@ def _make_project(tmp_path: Path) -> Path:
 
 def test_update_missing_root_returns_one(tmp_path: Path) -> None:
     assert run_update(UpdateOptions(), project_root=tmp_path / "nope") == 1
+
+
+def test_update_skips_symlinked_files(tmp_path: Path) -> None:
+    """A symlink must not be read or overwritten unless the user forces it."""
+    root = _make_project(tmp_path)
+    outside = tmp_path / "outside.py"
+    outside.write_text("# outside", encoding="utf-8")
+    link = root / "environment.py"
+    link.unlink(missing_ok=True)
+    try:
+        os.symlink(outside, link)
+    except OSError:
+        pytest.skip("Symlinks are not supported in this environment")
+    code = run_update(UpdateOptions(), project_root=root)
+    assert code == 0
+    assert link.is_symlink()
+    assert outside.read_text(encoding="utf-8") == "# outside"
 
 
 def test_update_no_generated_files(tmp_path: Path) -> None:

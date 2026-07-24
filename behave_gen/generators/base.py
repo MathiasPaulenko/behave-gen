@@ -11,6 +11,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
 
+__all__ = ["GenerationResult", "Generator"]
+
 
 @dataclass(frozen=True, slots=True)
 class GenerationResult:

@@ -13,6 +13,8 @@ from pathlib import Path
 from behave_gen.config import BehaveGenConfig, load_config
 from behave_gen.paths import resolve_path
 
+__all__ = ["Project", "ProjectError", "discover_project", "find_project_root"]
+
 _PROJECT_MARKERS = ("pyproject.toml", "behave.toml")
 
 
@@ -47,10 +49,10 @@ class Project:
             ProjectError: If ``root`` is not a directory, the configuration is
                 invalid, or it cannot be read.
         """
-        root_path = resolve_path(root)
-        if not root_path.is_dir():
-            raise ProjectError(f"Project root not found: {root_path}")
         try:
+            root_path = resolve_path(root)
+            if not root_path.is_dir():
+                raise ProjectError(f"Project root not found: {root_path}")
             resolved_config = config if config is not None else load_config(root_path)
         except (OSError, ValueError) as exc:
             raise ProjectError(str(exc)) from exc

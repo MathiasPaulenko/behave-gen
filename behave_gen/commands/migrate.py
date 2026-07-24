@@ -46,6 +46,12 @@ def run_migrate(
     source = Path(options.source)
     if not source.is_absolute():
         source = (project.root / source).resolve()
+        if not source.is_relative_to(project.root):
+            print(
+                f"migrate: Source path must be inside project root: {source}",
+                file=sys.stderr,
+            )
+            return 1
 
     out_dir = Path(options.out_dir)
     if not out_dir.is_absolute():
@@ -60,6 +66,9 @@ def run_migrate(
     try:
         report = migrate_cucumber(source, out_dir)
     except MigrationError as exc:
+        print(f"migrate: {exc}", file=sys.stderr)
+        return 1
+    except OSError as exc:
         print(f"migrate: {exc}", file=sys.stderr)
         return 1
 

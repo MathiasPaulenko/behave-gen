@@ -94,10 +94,8 @@ def test_http_steps_check_json_key_and_value(http_module: types.ModuleType) -> N
 
 def test_http_steps_set_base_url(http_module: types.ModuleType) -> None:
     ctx = _Ctx()
-    original = http_module.BASE_URL
     http_module.set_base_url(ctx, "https://api.example.com/")
-    assert http_module.BASE_URL == "https://api.example.com"
-    http_module.BASE_URL = original  # restore for other tests
+    assert ctx.behave_gen_http.base_url == "https://api.example.com"
 
 
 def test_http_steps_send_with_body(http_module: types.ModuleType) -> None:

@@ -15,7 +15,7 @@ from pathlib import Path
 from behave_model import ParseError, parse_feature
 
 from behave_gen.config import BehaveGenConfig
-from behave_gen.paths import resolve_project_root, validate_name
+from behave_gen.paths import resolve_project_root, safe_write_text, validate_name
 from behave_gen.project import Project, ProjectError
 
 _FEATURE_TEMPLATE_ROOT = "behave_gen.templates.features"
@@ -45,17 +45,22 @@ def _format_tag_line(parts: tuple[str, ...]) -> str:
     return " ".join(normalized) + "\n"
 
 
-def _feature_template_path(template: str) -> Path:
-    """Return the on-disk path to a feature template."""
+def _load_feature_template(template: str) -> str:
+    """Return the source text for a built-in feature template."""
     with resources.as_file(
         resources.files(_FEATURE_TEMPLATE_ROOT).joinpath(f"{template}.feature")
     ) as p:
         path = Path(p)
-    if not path.is_file():
-        raise AddError(
-            f"Unknown feature template {template!r}. Available templates: default, crud."
-        )
-    return path
+        if not path.is_file():
+            raise AddError(
+                f"Unknown feature template {template!r}. Available templates: default, crud."
+            )
+        try:
+            return path.read_text(encoding="utf-8")
+        except OSError as exc:
+            raise AddError(f"Could not read template {template}: {exc}") from exc
+        except UnicodeDecodeError as exc:
+            raise AddError(f"Could not decode template {template}: {exc}") from exc
 
 
 @dataclass(frozen=True, slots=True)
@@ -69,7 +74,7 @@ class AddFeatureOptions:
 
 def _humanize(name: str) -> str:
     """Turn a slug like ``user_login`` into ``User login``."""
-    return name.replace("_", " ").replace("-", " ").capitalize()
+    return name.replace("_", " ").replace("-", " ").replace("#", " ").capitalize()
 
 
 def add_feature(
@@ -104,14 +109,20 @@ def add_feature(
     if not root.is_dir():
         raise AddError(f"Project root not found: {root}")
 
-    features = root / features_dir
-    features.mkdir(parents=True, exist_ok=True)
+    features = (root / features_dir).resolve()
+    if not features.is_relative_to(root):
+        raise AddError(f"Features directory {features} escapes project root {root}.")
+    try:
+        features.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        raise AddError(f"Could not create features directory {features}: {exc}") from exc
     target = features / f"{name}.feature"
-    if target.exists():
+    if not target.is_relative_to(features):
+        raise AddError(f"Feature file {target} must be inside features directory {features}.")
+    if target.exists() or target.is_symlink():
         raise AddError(f"Feature file already exists: {target}. Use a different name or remove it.")
 
-    template_path = _feature_template_path(options.template)
-    raw = template_path.read_text(encoding="utf-8")
+    raw = _load_feature_template(options.template)
     all_tags = default_tags + _tag_parts(options.tags)
     context = {
         "feature_name": _humanize(name),
@@ -130,7 +141,10 @@ def add_feature(
     except ParseError as exc:
         raise AddError(f"Generated feature failed to parse: {exc}") from exc
 
-    target.write_text(rendered, encoding="utf-8")
+    try:
+        safe_write_text(target, rendered)
+    except OSError as exc:
+        raise AddError(f"Could not write feature file {target}: {exc}") from exc
     return target
 
 
