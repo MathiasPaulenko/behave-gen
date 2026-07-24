@@ -10,6 +10,7 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
+from behave_gen.paths import resolve_project_root
 from behave_gen.plugins.cucumber import migrate_cucumber
 from behave_gen.plugins.cucumber.migrator import MigrationError
 
@@ -23,7 +24,7 @@ class MigrateOptions:
     """Options for ``migrate``."""
 
     source: str
-    out_dir: str = "features"
+    out_dir: str = "migrated"
 
 
 def run_migrate(
@@ -31,7 +32,7 @@ def run_migrate(
     project_root: str | Path | None = None,
 ) -> int:
     """CLI entry point for ``behave-gen migrate``."""
-    root = Path(project_root) if project_root is not None else Path.cwd()
+    root = resolve_project_root(project_root)
     source = Path(options.source)
     if not source.is_absolute():
         source = (root / source).resolve()

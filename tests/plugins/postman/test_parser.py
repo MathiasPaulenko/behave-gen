@@ -51,6 +51,13 @@ def test_parse_missing_file_raises(tmp_path: Path) -> None:
         parse_postman(tmp_path / "nope.json")
 
 
+def test_parse_non_utf8_collection_raises(tmp_path: Path) -> None:
+    bad = tmp_path / "bad.json"
+    bad.write_bytes(b"\xff\xfe")
+    with pytest.raises(PostmanParseError, match="decode"):
+        parse_postman(bad)
+
+
 def test_parse_invalid_collection_raises() -> None:
     with pytest.raises(PostmanParseError, match="schema"):
         parse_postman(FIXTURES / "invalid.json")

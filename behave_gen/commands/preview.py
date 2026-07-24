@@ -12,6 +12,8 @@ from typing import Any
 
 from behave_model import ParseError, parse_feature
 
+from behave_gen.paths import resolve_project_root
+
 
 class PreviewError(Exception):
     """User-facing error raised by ``preview``."""
@@ -110,7 +112,7 @@ def run_preview(
     project_root: str | Path | None = None,
 ) -> int:
     """CLI entry point for ``behave-gen preview``."""
-    root = Path(project_root) if project_root is not None else Path.cwd()
+    root = resolve_project_root(project_root)
     path = Path(feature_path)
     if not path.is_absolute():
         path = (root / path).resolve()
@@ -119,7 +121,11 @@ def run_preview(
         print(f"preview: Feature file not found: {path}", file=sys.stderr)
         return 1
 
-    text = path.read_text(encoding="utf-8")
+    try:
+        text = path.read_text(encoding="utf-8")
+    except UnicodeDecodeError as exc:
+        print(f"preview: Could not decode {path} as UTF-8: {exc}", file=sys.stderr)
+        return 1
     try:
         feature = parse_feature(text, filename=str(path))
     except ParseError as exc:

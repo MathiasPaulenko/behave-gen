@@ -74,6 +74,25 @@ def test_run_from_postman_cli(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
     assert (tmp_path / "gen" / "features" / "Auth.feature").is_file()
 
 
+def test_run_from_postman_default_out_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    result = runner.invoke(app, ["from-postman", str(FIXTURES / "sample_collection.json")])
+    assert result.exit_code == 0, result.output
+    assert (tmp_path / "gen" / "features" / "Auth.feature").is_file()
+    assert not (tmp_path / "gen" / "features" / "features").exists()
+
+
+def test_run_from_postman_rejects_unsupported_step_lib(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    result = runner.invoke(
+        app, ["from-postman", str(FIXTURES / "sample_collection.json"), "--step-lib", "auth"]
+    )
+    assert result.exit_code == 1
+    assert "Only the 'http' step library" in result.output
+
+
 def test_run_from_postman_with_step_lib(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.chdir(tmp_path)
     result = runner.invoke(

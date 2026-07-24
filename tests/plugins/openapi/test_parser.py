@@ -41,6 +41,13 @@ def test_parse_missing_file_raises(tmp_path: Path) -> None:
         parse_openapi(tmp_path / "nope.json")
 
 
+def test_parse_non_utf8_spec_raises(tmp_path: Path) -> None:
+    bad = tmp_path / "bad.json"
+    bad.write_bytes(b"\xff\xfe")
+    with pytest.raises(OpenApiParseError, match="decode"):
+        parse_openapi(bad)
+
+
 def test_parse_invalid_document_raises() -> None:
     with pytest.raises(OpenApiParseError, match="Expected a mapping"):
         parse_openapi(FIXTURES / "invalid.txt")

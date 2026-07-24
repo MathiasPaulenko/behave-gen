@@ -64,7 +64,7 @@ patterns, so they work with the generated `http_steps.py`.
 | Option | Description |
 | ------ | ----------- |
 | `SPEC` | Path to an OpenAPI 3.x spec (YAML or JSON). |
-| `--out-dir` | Output directory (default: `features`). |
+| `--out-dir` | Output directory for the generated project (default: `gen`). |
 | `--step-lib` | Step library to bind (e.g. `http`). |
 | `--tag` | Tag applied to all generated scenarios. |
 | `--include-path` | Restrict to these paths (repeatable). |
@@ -94,7 +94,7 @@ behave-gen from-postman collection.json --out-dir gen --step-lib http --tag api
 | Option | Description |
 | ------ | ----------- |
 | `COLLECTION` | Path to a Postman Collection v2.1 JSON file. |
-| `--out-dir` | Output directory (default: `features`). |
+| `--out-dir` | Output directory for the generated project (default: `gen`). |
 | `--step-lib` | Step library to bind (e.g. `http`). |
 | `--tag` | Tag applied to all generated scenarios. |
 
@@ -121,7 +121,7 @@ behave-gen from-swagger swagger.json --out-dir gen --step-lib http --tag api
 | Option | Description |
 | ------ | ----------- |
 | `SPEC` | Path to a Swagger 2.0 spec (JSON). |
-| `--out-dir` | Output directory (default: `features`). |
+| `--out-dir` | Output directory for the generated project (default: `gen`). |
 | `--step-lib` | Step library to bind (e.g. `http`). |
 | `--tag` | Tag applied to all generated scenarios. |
 
@@ -132,7 +132,8 @@ behave-gen from-swagger swagger.json --out-dir gen --step-lib http --tag api
 When the source spec changes, re-run the generator or use `behave-gen update`:
 
 ```bash
-behave-gen update --from-openapi spec.yaml --force
+behave-gen update --force
 ```
 
-This re-applies the generator and overwrites previously generated files.
+This re-applies generated `environment.py` and step libraries, preserving any
+previously added `--kit` or `--data` wiring.

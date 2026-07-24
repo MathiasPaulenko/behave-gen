@@ -14,6 +14,8 @@ from dataclasses import dataclass
 from importlib import resources
 from pathlib import Path
 
+from behave_gen.paths import resolve_project_root
+
 _TEMPLATE_ROOT = "behave_gen.templates.default"
 
 _ENVIRONMENT_VARIANTS = {
@@ -101,7 +103,7 @@ def run_add_environment(
     project_root: str | Path | None = None,
 ) -> int:
     """CLI entry point for ``behave-gen add environment``."""
-    root = Path(project_root) if project_root is not None else Path.cwd()
+    root = resolve_project_root(project_root)
     try:
         path = add_environment(root, options)
     except EnvironmentError as exc:
@@ -241,7 +243,7 @@ def _append_dependency(text: str, package_spec: str) -> str:
 
 def run_add_config(name: str, project_root: str | Path | None = None) -> int:
     """CLI entry point for ``behave-gen add config``."""
-    root = Path(project_root) if project_root is not None else Path.cwd()
+    root = resolve_project_root(project_root)
     try:
         path = add_config(root, name)
     except EnvironmentError as exc:

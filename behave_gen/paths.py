@@ -6,7 +6,44 @@ code never has to reason about relative vs. absolute paths.
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
+
+
+def validate_name(name: str) -> str:
+    """Validate a user-supplied file or directory ``name``.
+
+    Strips surrounding whitespace, rejects empty strings, exact ``.``/``..``,
+    absolute paths, and path separator or reserved characters. Returns the
+    cleaned name.
+
+    Raises:
+        ValueError: If the name is empty or would be unsafe as a path component.
+    """
+    cleaned = name.strip()
+    if not cleaned:
+        raise ValueError("Name cannot be empty or whitespace only.")
+    if cleaned in {".", ".."}:
+        raise ValueError("Name cannot be '.' or '..'.")
+    if os.path.isabs(cleaned):
+        raise ValueError("Name cannot be an absolute path.")
+
+    forbidden = {"\\", "/", ":", "*", "?", '"', "<", ">", "|", "$", "\x00"}
+    if os.sep and os.sep not in forbidden:
+        forbidden.add(os.sep)
+    if os.altsep and os.altsep not in forbidden:
+        forbidden.add(os.altsep)
+    if any(ch in forbidden for ch in cleaned):
+        raise ValueError(f"Name contains forbidden characters: {cleaned!r}.")
+
+    return cleaned
+
+
+def resolve_project_root(project_root: str | Path | None) -> Path:
+    """Return ``project_root`` as an absolute :class:`Path`, defaulting to cwd."""
+    if project_root is None:
+        return Path.cwd()
+    return Path(project_root).resolve()
 
 
 def resolve_path(path: str | Path, base: str | Path | None = None) -> Path:

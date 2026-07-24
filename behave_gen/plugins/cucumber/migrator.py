@@ -41,13 +41,30 @@ def _clean_feature_text(text: str) -> str:
     return cleaned
 
 
+def _within_source(path: Path, source: Path) -> bool:
+    """Return True if ``path`` resolves to a location inside ``source``."""
+    try:
+        resolved = path.resolve()
+    except (OSError, RuntimeError):
+        return False
+    try:
+        resolved.relative_to(source.resolve())
+    except ValueError:
+        return False
+    return True
+
+
 def _find_feature_files(source: Path) -> list[Path]:
     """Find all ``.feature`` files under ``source``."""
     if source.is_file() and source.suffix == ".feature":
         return [source]
-    if source.is_dir():
-        return sorted(source.rglob("*.feature"))
-    return []
+    if not source.is_dir():
+        return []
+    files: list[Path] = []
+    for p in source.rglob("*.feature"):
+        if _within_source(p, source):
+            files.append(p.resolve())
+    return sorted(files)
 
 
 def _find_step_definitions(source: Path) -> list[Path]:
@@ -56,7 +73,9 @@ def _find_step_definitions(source: Path) -> list[Path]:
         return []
     candidates: list[Path] = []
     for pattern in ("**/*Steps*.java", "**/*StepDefs*.java", "**/*StepDefinitions*.java"):
-        candidates.extend(source.rglob(pattern))
+        for p in source.rglob(pattern):
+            if _within_source(p, source):
+                candidates.append(p.resolve())
     return sorted(set(candidates))
 
 

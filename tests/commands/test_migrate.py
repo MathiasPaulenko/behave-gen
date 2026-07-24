@@ -24,6 +24,22 @@ def test_run_migrate_cli(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Non
     ).is_file()
 
 
+def test_run_migrate_default_out_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    result = runner.invoke(app, ["migrate", str(FIXTURES)])
+    assert result.exit_code == 0, result.output
+    assert (
+        tmp_path
+        / "migrated"
+        / "features"
+        / "src"
+        / "test"
+        / "resources"
+        / "features"
+        / "login.feature"
+    ).is_file()
+
+
 def test_run_migrate_missing_source(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.chdir(tmp_path)
     result = runner.invoke(app, ["migrate", "nope"])

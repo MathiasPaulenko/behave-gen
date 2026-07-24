@@ -121,3 +121,19 @@ def test_generated_code_passes_ruff(tmp_path: Path) -> None:
         check=False,
     )
     assert proc.returncode == 0, f"ruff failed:\n{proc.stdout}\n{proc.stderr}"
+
+
+def test_init_rejects_dot_names(tmp_path: Path) -> None:
+    for name in (".", ".."):
+        with pytest.raises(InitError, match="Invalid project name"):
+            init_project(tmp_path, InitOptions(name=name))
+
+
+def test_init_rejects_path_traversal(tmp_path: Path) -> None:
+    with pytest.raises(InitError, match="Invalid project name"):
+        init_project(tmp_path, InitOptions(name="../escape"))
+
+
+def test_init_rejects_absolute_name(tmp_path: Path) -> None:
+    with pytest.raises(InitError, match="Invalid project name"):
+        init_project(tmp_path, InitOptions(name="C:/unsafe"))

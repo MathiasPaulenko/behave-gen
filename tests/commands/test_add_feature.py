@@ -108,6 +108,19 @@ def test_add_feature_cli_existing_fails(tmp_path: Path, monkeypatch: pytest.Monk
     assert "already exists" in result.output
 
 
+def test_add_feature_rejects_dot_names(tmp_path: Path) -> None:
+    root = _make_project(tmp_path)
+    for name in (".", ".."):
+        with pytest.raises(AddError, match="Invalid feature name"):
+            add_feature(root, AddFeatureOptions(name=name))
+
+
+def test_add_feature_rejects_path_traversal(tmp_path: Path) -> None:
+    root = _make_project(tmp_path)
+    with pytest.raises(AddError, match="Invalid feature name"):
+        add_feature(root, AddFeatureOptions(name="../escape"))
+
+
 def test_generated_feature_behave_dry_run(tmp_path: Path) -> None:
     root = _make_project(tmp_path)
     add_feature(root, AddFeatureOptions(name="login"))

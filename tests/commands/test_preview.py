@@ -64,3 +64,10 @@ def test_preview_cli(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     result = runner.invoke(app, ["preview", "features/demo.feature"])
     assert result.exit_code == 0, result.output
     assert "Feature: Demo" in result.output
+
+
+def test_preview_non_utf8_file_returns_one(tmp_path: Path) -> None:
+    root = _make_project(tmp_path)
+    feature = root / "features" / "demo.feature"
+    feature.write_bytes(b"\xff\xfe")
+    assert run_preview(str(feature), project_root=root) == 1

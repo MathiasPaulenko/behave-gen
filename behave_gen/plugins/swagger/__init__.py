@@ -15,13 +15,18 @@ from typing import Any
 
 from behave_gen.plugins.openapi.parser import OpenApiParseError, OpenApiSpec, parse_openapi
 
+__all__ = ["SwaggerParseError", "convert_swagger_to_openapi"]
+
 
 class SwaggerParseError(Exception):
     """Raised when a Swagger 2.0 document cannot be converted."""
 
 
 def _load_swagger(source: Path) -> dict[str, Any]:
-    text = source.read_text(encoding="utf-8")
+    try:
+        text = source.read_text(encoding="utf-8")
+    except UnicodeDecodeError as exc:
+        raise SwaggerParseError(f"Could not decode {source} as UTF-8: {exc}") from exc
     suffix = source.suffix.lower()
     if suffix in {".yaml", ".yml"}:
         try:

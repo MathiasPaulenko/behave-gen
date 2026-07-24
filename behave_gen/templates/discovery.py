@@ -40,12 +40,20 @@ class TemplateSet:
         root_path = Path(root).resolve()
         if not root_path.is_dir():
             raise FileNotFoundError(f"Template set directory not found: {root_path}")
-        files = tuple(
-            TemplateFile(relative_path=p.relative_to(root_path), source=p)
-            for p in sorted(root_path.rglob("*"))
-            if p.is_file()
-        )
-        return cls(name=name or root_path.name, root=root_path, files=files)
+        files: list[TemplateFile] = []
+        for p in sorted(root_path.rglob("*")):
+            if not p.is_file():
+                continue
+            try:
+                resolved = p.resolve()
+            except (OSError, RuntimeError):
+                continue
+            if not resolved.is_relative_to(root_path):
+                continue
+            files.append(
+                TemplateFile(relative_path=resolved.relative_to(root_path), source=resolved)
+            )
+        return cls(name=name or root_path.name, root=root_path, files=tuple(files))
 
     def render_to(
         self,

@@ -4,10 +4,10 @@ All commands share these global options:
 
 | Option | Description |
 | ------ | ----------- |
-| `--project PATH` | Project root directory (default: auto-detect from cwd). |
-| `--config PATH` | Path to an explicit `pyproject.toml` config file. |
-| `--verbose, -v` | Enable verbose (DEBUG) output. |
-| `--dry-run` | Show what would happen without writing files. |
+| `--project PATH` | Project root directory (default: current working directory). |
+| `--config PATH` | Path to an explicit `pyproject.toml` config file (reserved). |
+| `--verbose, -v` | Enable verbose output (reserved). |
+| `--dry-run` | Show what would happen without writing files (reserved). |
 
 ---
 
@@ -30,6 +30,7 @@ behave-gen init [OPTIONS] NAME
 | Option | Default | Description |
 | ------ | ------- | ----------- |
 | `--template` | `default` | Template set to use. |
+| `--template-engine` | `string` | Template engine: `string` or `jinja2`. |
 | `--kit` | `false` | Pre-wire behave-kit in `environment.py`. |
 | `--data` | `false` | Pre-wire behave-data hooks. |
 | `--force` | `false` | Overwrite an existing directory. |
@@ -87,7 +88,6 @@ behave-gen add steps [OPTIONS]
 | Option | Default | Description |
 | ------ | ------- | ----------- |
 | `--lib` | _required_ | Step library name: `http` or `auth`. |
-| `--from-openapi` | _none_ | Generate steps from an OpenAPI spec. |
 
 **Example:**
 
@@ -163,7 +163,7 @@ behave-gen from-openapi [OPTIONS] SPEC
 
 | Option | Default | Description |
 | ------ | ------- | ----------- |
-| `--out-dir` | `features` | Output directory for generated files. |
+| `--out-dir` | `gen` | Output directory for the generated project (creates a `features/` subdir). |
 | `--step-lib` | _none_ | Step library to bind (e.g. `http`). |
 | `--tag` | _none_ | Tag generated scenarios. |
 | `--include-path` | _all_ | Restrict to these paths (repeatable). |
@@ -198,7 +198,7 @@ behave-gen from-postman [OPTIONS] COLLECTION
 
 | Option | Default | Description |
 | ------ | ------- | ----------- |
-| `--out-dir` | `features` | Output directory for generated files. |
+| `--out-dir` | `gen` | Output directory for the generated project (creates a `features/` subdir). |
 | `--step-lib` | _none_ | Step library to bind (e.g. `http`). |
 | `--tag` | _none_ | Tag generated scenarios. |
 
@@ -230,7 +230,7 @@ behave-gen from-swagger [OPTIONS] SPEC
 
 | Option | Default | Description |
 | ------ | ------- | ----------- |
-| `--out-dir` | `features` | Output directory for generated files. |
+| `--out-dir` | `gen` | Output directory for the generated project (creates a `features/` subdir). |
 | `--step-lib` | _none_ | Step library to bind (e.g. `http`). |
 | `--tag` | _none_ | Tag generated scenarios. |
 
@@ -262,8 +262,7 @@ behave-gen migrate [OPTIONS] SOURCE_DIR
 
 | Option | Default | Description |
 | ------ | ------- | ----------- |
-| `--out-dir` | `.` | Output directory for the Behave project. |
-| `--from` | `java` | Source language (`java`, `ruby`). |
+| `--out-dir` | `migrated` | Output directory for the migrated project (creates a `features/` subdir). |
 
 **Example:**
 
@@ -368,12 +367,6 @@ behave-gen preview [OPTIONS] FEATURE
 | -------- | ----------- |
 | `FEATURE` | Path to a `.feature` file. |
 
-**Options:**
-
-| Option | Default | Description |
-| ------ | ------- | ----------- |
-| `--format` | `text` | Output format: `text` or `json`. |
-
 **Example:**
 
 ```bash
@@ -395,7 +388,6 @@ behave-gen stats [OPTIONS]
 | Option | Default | Description |
 | ------ | ------- | ----------- |
 | `--format` | `text` | Output format: `text` or `json`. |
-| `--by-tag` | `false` | Break down stats by tag (reserved). |
 
 **Example:**
 
@@ -408,7 +400,7 @@ behave-gen stats --format json
 
 ## update
 
-Re-apply generators to an existing project.
+Re-apply generated environment and step libraries to an existing project.
 
 ```bash
 behave-gen update [OPTIONS]
@@ -418,8 +410,8 @@ behave-gen update [OPTIONS]
 
 | Option | Default | Description |
 | ------ | ------- | ----------- |
-| `--from-openapi` | _none_ | Re-apply an OpenAPI generator. |
-| `--only-missing` | `false` | Add only missing features/steps. |
+| `--kit` | `false` | Include behave-kit wiring in `environment.py`. |
+| `--data` | `false` | Include behave-data wiring in `environment.py`. |
 | `--force` | `false` | Regenerate and back up changed files. |
 
 **Example:**

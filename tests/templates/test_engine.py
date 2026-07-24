@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import pytest
@@ -147,3 +148,17 @@ def test_init_jinja2_engine_when_installed(tmp_path: Path) -> None:
     # $name is a literal pass-through; this just verifies the engine path.
     root = init_project(tmp_path, InitOptions(name="proj", template_engine="jinja2"))
     assert (root / "README.md").is_file()
+
+
+def test_template_set_ignores_symlinks_outside_root(tmp_path: Path) -> None:
+    root = tmp_path / "tpl"
+    root.mkdir()
+    outside = tmp_path / "outside.txt"
+    outside.write_text("secret", encoding="utf-8")
+    link = root / "link.txt"
+    try:
+        os.symlink(outside, link)
+    except OSError:
+        pytest.skip("Symlinks are not supported in this environment")
+    ts = TemplateSet.from_directory(root)
+    assert len(ts.files) == 0

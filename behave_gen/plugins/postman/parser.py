@@ -91,7 +91,11 @@ def parse_postman(source: str | Path) -> PostmanCollection:
         raise PostmanParseError(f"Postman collection not found: {path}")
 
     try:
-        doc = json.loads(path.read_text(encoding="utf-8"))
+        text = path.read_text(encoding="utf-8")
+    except UnicodeDecodeError as exc:
+        raise PostmanParseError(f"Could not decode {path} as UTF-8: {exc}") from exc
+    try:
+        doc = json.loads(text)
     except json.JSONDecodeError as exc:
         raise PostmanParseError(f"Invalid JSON: {exc}") from exc
 

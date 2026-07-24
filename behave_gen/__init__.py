@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
-__version__ = "0.1.0"
+import importlib.metadata as _metadata
+
+try:
+    __version__ = _metadata.version("behave-gen")
+except _metadata.PackageNotFoundError:  # pragma: no cover - fallback for source-only runs.
+    __version__ = "1.0.0"
 
 __all__ = ["__version__"]

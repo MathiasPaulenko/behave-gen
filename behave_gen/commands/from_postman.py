@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from behave_gen.generators.postman import PostmanGenerator
+from behave_gen.paths import resolve_project_root
 from behave_gen.plugins.postman.parser import PostmanParseError
 
 
@@ -15,7 +16,7 @@ class FromPostmanOptions:
     """Options for ``from-postman``."""
 
     collection: str
-    out_dir: str = "features"
+    out_dir: str = "gen"
     step_lib: str | None = None
     tag: str | None = None
 
@@ -25,7 +26,7 @@ def run_from_postman(
     project_root: str | Path | None = None,
 ) -> int:
     """CLI entry point for ``behave-gen from-postman``."""
-    root = Path(project_root) if project_root is not None else Path.cwd()
+    root = resolve_project_root(project_root)
     collection_path = Path(options.collection)
     if not collection_path.is_absolute():
         collection_path = (root / collection_path).resolve()
@@ -33,6 +34,13 @@ def run_from_postman(
     out_dir = Path(options.out_dir)
     if not out_dir.is_absolute():
         out_dir = (root / out_dir).resolve()
+
+    if options.step_lib is not None and options.step_lib != "http":
+        print(
+            "from-postman: Only the 'http' step library is supported for generated specs.",
+            file=sys.stderr,
+        )
+        return 1
 
     generator = PostmanGenerator()
     try:

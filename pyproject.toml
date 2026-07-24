@@ -38,7 +38,6 @@ format = ["behave-format>=1.0"]
 kit = ["behave-kit>=1.0"]
 data = ["behave-data>=1.0"]
 openapi = ["pyyaml>=6.0"]
-postman = []
 swagger = ["pyyaml>=6.0"]
 dev = [
     "pytest>=8.0",

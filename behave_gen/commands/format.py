@@ -11,6 +11,7 @@ import sys
 from pathlib import Path
 
 from behave_gen.diagnostics import check_extra
+from behave_gen.paths import resolve_project_root
 
 
 def run_format(
@@ -29,7 +30,7 @@ def run_format(
     Returns:
         The behave-format exit code, or ``0`` when the extra is missing.
     """
-    root = Path(project_root) if project_root is not None else Path.cwd()
+    root = resolve_project_root(project_root)
     if not root.is_dir():
         print(f"format: Project root not found: {root}", file=sys.stderr)
         return 1

@@ -102,10 +102,20 @@ def init_cmd(
     force: Annotated[bool, typer.Option] = typer.Option(
         False, "--force", help="Overwrite an existing directory."
     ),
+    template_engine: Annotated[str, typer.Option] = typer.Option(
+        "string", "--template-engine", help="Template engine: string or jinja2."
+    ),
 ) -> None:
     """Create a new Behave project from a template."""
-    options = InitOptions(name=name, template=template, kit=kit, data=data, force=force)
-    code = run_init(options)
+    options = InitOptions(
+        name=name,
+        template=template,
+        kit=kit,
+        data=data,
+        force=force,
+        template_engine=template_engine,
+    )
+    code = run_init(options, target_dir=state.project)
     raise typer.Exit(code=code)
 
 
@@ -125,7 +135,7 @@ def add_feature_cmd(
 ) -> None:
     """Add a .feature file to the project."""
     options = AddFeatureOptions(name=name, tags=tags, template=template)
-    code = run_add_feature(options)
+    code = run_add_feature(options, project_root=state.project)
     raise typer.Exit(code=code)
 
 
@@ -134,13 +144,10 @@ def add_steps_cmd(
     lib: Annotated[str, typer.Option] = typer.Option(
         ..., "--lib", help="Step library name (e.g. http, auth)."
     ),
-    from_openapi: Annotated[str | None, typer.Option] = typer.Option(
-        None, "--from-openapi", help="Generate steps from an OpenAPI spec."
-    ),
 ) -> None:
     """Add real step definitions from a step library."""
-    options = AddStepsOptions(lib=lib, from_openapi=from_openapi)
-    code = run_add_steps(options)
+    options = AddStepsOptions(lib=lib)
+    code = run_add_steps(options, project_root=state.project)
     raise typer.Exit(code=code)
 
 
@@ -155,7 +162,7 @@ def add_environment_cmd(
 ) -> None:
     """Add or update environment.py with ecosystem hooks."""
     options = AddEnvironmentOptions(kit=kit, data=data)
-    code = run_add_environment(options)
+    code = run_add_environment(options, project_root=state.project)
     raise typer.Exit(code=code)
 
 
@@ -164,7 +171,7 @@ def add_config_cmd(
     name: Annotated[str, typer.Argument(help="Config to add (behave-kit, behave-data).")],
 ) -> None:
     """Add an ecosystem config to pyproject.toml."""
-    code = run_add_config(name)
+    code = run_add_config(name, project_root=state.project)
     raise typer.Exit(code=code)
 
 
@@ -175,7 +182,9 @@ def add_config_cmd(
 def from_openapi_cmd(
     spec: Annotated[str, typer.Argument(help="Path to an OpenAPI 3.x spec.")],
     out_dir: Annotated[str, typer.Option] = typer.Option(
-        "features", "--out-dir", help="Output directory for generated files."
+        "gen",
+        "--out-dir",
+        help="Output directory for the generated project (a features/ subdir is created).",
     ),
     step_lib: Annotated[str | None, typer.Option] = typer.Option(
         None, "--step-lib", help="Step library to bind (e.g. http)."
@@ -199,7 +208,7 @@ def from_openapi_cmd(
         include_paths=tuple(include_path),
         include_methods=tuple(include_method),
     )
-    code = run_from_openapi(options)
+    code = run_from_openapi(options, project_root=state.project)
     raise typer.Exit(code=code)
 
 
@@ -207,7 +216,9 @@ def from_openapi_cmd(
 def from_postman_cmd(
     collection: Annotated[str, typer.Argument(help="Path to a Postman collection JSON.")],
     out_dir: Annotated[str, typer.Option] = typer.Option(
-        "features", "--out-dir", help="Output directory for generated files."
+        "gen",
+        "--out-dir",
+        help="Output directory for the generated project (a features/ subdir is created).",
     ),
     step_lib: Annotated[str | None, typer.Option] = typer.Option(
         None, "--step-lib", help="Step library to bind (e.g. http)."
@@ -215,7 +226,7 @@ def from_postman_cmd(
 ) -> None:
     """Generate features and steps from a Postman collection."""
     options = FromPostmanOptions(collection=collection, out_dir=out_dir, step_lib=step_lib)
-    code = run_from_postman(options)
+    code = run_from_postman(options, project_root=state.project)
     raise typer.Exit(code=code)
 
 
@@ -223,7 +234,9 @@ def from_postman_cmd(
 def from_swagger_cmd(
     spec: Annotated[str, typer.Argument(help="Path to a Swagger 2.0 spec.")],
     out_dir: Annotated[str, typer.Option] = typer.Option(
-        "features", "--out-dir", help="Output directory for generated files."
+        "gen",
+        "--out-dir",
+        help="Output directory for the generated project (a features/ subdir is created).",
     ),
     step_lib: Annotated[str | None, typer.Option] = typer.Option(
         None, "--step-lib", help="Step library to bind (e.g. http)."
@@ -234,7 +247,7 @@ def from_swagger_cmd(
 ) -> None:
     """Generate features and steps from a Swagger 2.0 spec."""
     options = FromSwaggerOptions(spec=spec, out_dir=out_dir, step_lib=step_lib, tag=tag)
-    code = run_from_swagger(options)
+    code = run_from_swagger(options, project_root=state.project)
     raise typer.Exit(code=code)
 
 
@@ -242,15 +255,14 @@ def from_swagger_cmd(
 def migrate_cmd(
     source_dir: Annotated[str, typer.Argument(help="Cucumber project to migrate.")],
     out_dir: Annotated[str, typer.Option] = typer.Option(
-        ".", "--out-dir", help="Output directory for the Behave project."
-    ),
-    from_lang: Annotated[str, typer.Option] = typer.Option(
-        "java", "--from", help="Source language (java, ruby)."
+        "migrated",
+        "--out-dir",
+        help="Output directory for the migrated project (a features/ subdir is created).",
     ),
 ) -> None:
     """Migrate a Cucumber project to Behave."""
     options = MigrateOptions(source=source_dir, out_dir=out_dir)
-    code = run_migrate(options)
+    code = run_migrate(options, project_root=state.project)
     raise typer.Exit(code=code)
 
 
@@ -260,7 +272,7 @@ def migrate_cmd(
 @app.command("doctor")
 def doctor_cmd() -> None:
     """Run behave-doctor diagnostics (alias for check)."""
-    code = run_check()
+    code = run_check(project_root=state.project)
     raise typer.Exit(code=code)
 
 
@@ -271,7 +283,7 @@ def lint_cmd(
     ),
 ) -> None:
     """Lint .feature files via behave-lint."""
-    code = run_lint(fix=fix)
+    code = run_lint(project_root=state.project, fix=fix)
     raise typer.Exit(code=code)
 
 
@@ -282,7 +294,7 @@ def format_cmd(
     ),
 ) -> None:
     """Format .feature files via behave-format."""
-    code = run_format(check=check)
+    code = run_format(project_root=state.project, check=check)
     raise typer.Exit(code=code)
 
 
@@ -293,7 +305,7 @@ def check_cmd(
     ),
 ) -> None:
     """Check project health via behave-doctor."""
-    code = run_check(fmt=fmt)
+    code = run_check(project_root=state.project, fmt=fmt)
     raise typer.Exit(code=code)
 
 
@@ -303,12 +315,9 @@ def check_cmd(
 @app.command("preview")
 def preview_cmd(
     feature: Annotated[str, typer.Argument(help="Path to a .feature file.")],
-    fmt: Annotated[str, typer.Option] = typer.Option(
-        "text", "--format", help="Output format: text or json."
-    ),
 ) -> None:
     """Preview a feature file with resolved examples and tables."""
-    code = run_preview(feature)
+    code = run_preview(feature, project_root=state.project)
     raise typer.Exit(code=code)
 
 
@@ -317,13 +326,9 @@ def stats_cmd(
     fmt: Annotated[str, typer.Option] = typer.Option(
         "text", "--format", help="Output format: text or json."
     ),
-    by_tag: Annotated[bool, typer.Option] = typer.Option(
-        False, "--by-tag", help="Break down stats by tag."
-    ),
 ) -> None:
     """Report project statistics."""
-    _ = by_tag  # reserved for future per-tag breakdown
-    code = run_stats(fmt=fmt)
+    code = run_stats(project_root=state.project, fmt=fmt)
     raise typer.Exit(code=code)
 
 
@@ -332,19 +337,19 @@ def stats_cmd(
 
 @app.command("update")
 def update_cmd(
-    from_openapi: Annotated[str | None, typer.Option] = typer.Option(
-        None, "--from-openapi", help="Re-apply an OpenAPI generator."
+    kit: Annotated[bool, typer.Option] = typer.Option(
+        False, "--kit", help="Include behave-kit wiring in environment.py."
     ),
-    only_missing: Annotated[bool, typer.Option] = typer.Option(
-        False, "--only-missing", help="Add only missing features/steps."
+    data: Annotated[bool, typer.Option] = typer.Option(
+        False, "--data", help="Include behave-data wiring in environment.py."
     ),
     force: Annotated[bool, typer.Option] = typer.Option(
         False, "--force", help="Regenerate and back up changed files."
     ),
 ) -> None:
-    """Re-apply generators to an existing project."""
-    options = UpdateOptions(force=force)
-    code = run_update(options)
+    """Re-apply generated environment and step libraries to an existing project."""
+    options = UpdateOptions(kit=kit, data=data, force=force)
+    code = run_update(options, project_root=state.project)
     raise typer.Exit(code=code)
 
 

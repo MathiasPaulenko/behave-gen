@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from behave_gen.diagnostics import check_extra
+from behave_gen.paths import resolve_project_root
 
 _UNDEFINED_STEP_RULES = frozenset({"undefined-step", "undefined_step", "missing-step"})
 
@@ -118,7 +119,7 @@ def run_check(
     Returns the exit code: ``0`` when behave-doctor is missing (graceful) or
     when the report has no errors; otherwise the doctor report's exit code.
     """
-    root = Path(project_root) if project_root is not None else Path.cwd()
+    root = resolve_project_root(project_root)
     if not root.is_dir():
         print(f"check: Project root not found: {root}", file=sys.stderr)
         return 1

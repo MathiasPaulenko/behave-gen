@@ -11,6 +11,7 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
+from behave_gen.paths import resolve_project_root, validate_name
 from behave_gen.templates.engine import TemplateRenderError, get_engine
 from behave_gen.templates.registry import TemplateRegistry, default_registry
 
@@ -83,9 +84,10 @@ def init_project(
         InitError: If the target exists and ``force`` is not set, the template
             is unknown, the project name is invalid, or rendering fails.
     """
-    name = options.name
-    if not name or any(ch in name for ch in ("\\", ":", "*", "?", '"', "<", ">", "|")):
-        raise InitError(f"Invalid project name: {name!r}.")
+    try:
+        name = validate_name(options.name)
+    except ValueError as exc:
+        raise InitError(f"Invalid project name: {exc}") from exc
 
     parent = Path(target_dir).resolve()
     parent.mkdir(parents=True, exist_ok=True)
@@ -120,7 +122,7 @@ def init_project(
 
 def run_init(options: InitOptions, target_dir: str | Path | None = None) -> int:
     """CLI entry point for ``behave-gen init``."""
-    parent = Path(target_dir) if target_dir is not None else Path.cwd()
+    parent = resolve_project_root(target_dir)
     try:
         root = init_project(parent, options)
     except InitError as exc:

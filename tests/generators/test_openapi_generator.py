@@ -108,6 +108,26 @@ def test_run_from_openapi_cli(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
     assert (tmp_path / "gen" / "features" / "pets.feature").is_file()
 
 
+def test_run_from_openapi_default_out_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    spec = FIXTURES / "petstore.json"
+    result = runner.invoke(app, ["from-openapi", str(spec)])
+    assert result.exit_code == 0, result.output
+    assert (tmp_path / "gen" / "features" / "pets.feature").is_file()
+    assert not (tmp_path / "gen" / "features" / "features").exists()
+
+
+def test_run_from_openapi_rejects_unsupported_step_lib(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    result = runner.invoke(
+        app, ["from-openapi", str(FIXTURES / "petstore.json"), "--step-lib", "auth"]
+    )
+    assert result.exit_code == 1
+    assert "Only the 'http' step library" in result.output
+
+
 def test_run_from_openapi_with_step_lib(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.chdir(tmp_path)
     spec = FIXTURES / "petstore.json"

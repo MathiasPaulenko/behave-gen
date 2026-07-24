@@ -14,6 +14,8 @@ from pathlib import Path
 
 from behave_model import ParseError, parse_feature
 
+from behave_gen.paths import resolve_project_root, validate_name
+
 _FEATURE_TEMPLATE_ROOT = "behave_gen.templates.features"
 
 
@@ -84,9 +86,10 @@ def add_feature(
         AddError: If the project/features dir is missing, the template is
             unknown, the name is invalid, or the generated file fails to parse.
     """
-    name = options.name.strip()
-    if not name or any(ch in name for ch in ("\\", ":", "*", "?", '"', "<", ">", "|", "/")):
-        raise AddError(f"Invalid feature name: {name!r}.")
+    try:
+        name = validate_name(options.name)
+    except ValueError as exc:
+        raise AddError(f"Invalid feature name: {exc}") from exc
 
     root = Path(project_root).resolve()
     if not root.is_dir():
@@ -125,7 +128,7 @@ def run_add_feature(
     project_root: str | Path | None = None,
 ) -> int:
     """CLI entry point for ``behave-gen add feature``."""
-    root = Path(project_root) if project_root is not None else Path.cwd()
+    root = resolve_project_root(project_root)
     try:
         path = add_feature(root, options)
     except AddError as exc:

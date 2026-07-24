@@ -14,6 +14,8 @@ from typing import Any
 
 from behave_model import ParseError, parse_feature
 
+from behave_gen.paths import resolve_project_root
+
 
 class StatsError(Exception):
     """User-facing error raised by ``stats``."""
@@ -94,7 +96,7 @@ def run_stats(
     fmt: str = "text",
 ) -> int:
     """CLI entry point for ``behave-gen stats``."""
-    root = Path(project_root) if project_root is not None else Path.cwd()
+    root = resolve_project_root(project_root)
     if not root.is_dir():
         print(f"stats: Project root not found: {root}", file=sys.stderr)
         return 1

@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from behave_gen.generators.openapi import OpenApiGenerator
+from behave_gen.paths import resolve_project_root
 from behave_gen.plugins.openapi.parser import OpenApiParseError
 
 
@@ -18,7 +19,7 @@ class FromOpenApiOptions:
     """Options for ``from-openapi``."""
 
     spec: str
-    out_dir: str = "features"
+    out_dir: str = "gen"
     step_lib: str | None = None
     tag: str | None = None
     include_paths: tuple[str, ...] = ()
@@ -30,7 +31,7 @@ def run_from_openapi(
     project_root: str | Path | None = None,
 ) -> int:
     """CLI entry point for ``behave-gen from-openapi``."""
-    root = Path(project_root) if project_root is not None else Path.cwd()
+    root = resolve_project_root(project_root)
     spec_path = Path(options.spec)
     if not spec_path.is_absolute():
         spec_path = (root / spec_path).resolve()
@@ -38,6 +39,13 @@ def run_from_openapi(
     out_dir = Path(options.out_dir)
     if not out_dir.is_absolute():
         out_dir = (root / out_dir).resolve()
+
+    if options.step_lib is not None and options.step_lib != "http":
+        print(
+            "from-openapi: Only the 'http' step library is supported for generated specs.",
+            file=sys.stderr,
+        )
+        return 1
 
     generator = OpenApiGenerator()
     try:

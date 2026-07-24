@@ -13,6 +13,8 @@ from dataclasses import dataclass
 from importlib import resources
 from pathlib import Path
 
+from behave_gen.paths import resolve_project_root
+
 _STEP_LIB_ROOT = "behave_gen.step_libraries"
 
 # Built-in libraries: name -> (template filename, output filename).
@@ -31,7 +33,6 @@ class AddStepsOptions:
     """Options for ``add steps``."""
 
     lib: str
-    from_openapi: str | None = None
 
 
 def _template_path(template_name: str) -> Path:
@@ -101,7 +102,7 @@ def run_add_steps(
     project_root: str | Path | None = None,
 ) -> int:
     """CLI entry point for ``behave-gen add steps``."""
-    root = Path(project_root) if project_root is not None else Path.cwd()
+    root = resolve_project_root(project_root)
     try:
         path = add_steps(root, options)
     except AddStepsError as exc:

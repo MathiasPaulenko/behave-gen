@@ -34,7 +34,7 @@ behave-format), and migrates Cucumber projects to Behave.
 | `migrate` | Migrate a Cucumber (Java) project to Behave. |
 | `preview` | Pretty-print a `.feature` file. |
 | `stats` | Report project statistics (features, scenarios, steps, tags). |
-| `update` | Upgrade generated files to the latest behave-gen versions. |
+| `update` | Re-apply generated environment and step libraries. |
 
 ## Installation
 

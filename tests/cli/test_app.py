@@ -78,3 +78,9 @@ def test_doctor_is_alias_for_check(tmp_path: Path, monkeypatch: pytest.MonkeyPat
 def test_no_args_shows_help() -> None:
     result = runner.invoke(app, [])
     assert result.exit_code != 0
+
+
+def test_global_project_option_is_used(tmp_path: Path) -> None:
+    result = runner.invoke(app, ["--project", str(tmp_path), "init", "global-proj"])
+    assert result.exit_code == 0, result.output
+    assert (tmp_path / "global-proj" / "environment.py").is_file()
