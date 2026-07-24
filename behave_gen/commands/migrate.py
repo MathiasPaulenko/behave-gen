@@ -1,0 +1,56 @@
+"""``behave-gen migrate`` command implementation.
+
+Migrates a Cucumber project to a Behave project layout by copying feature
+files and emitting a migration report.
+"""
+
+from __future__ import annotations
+
+import sys
+from dataclasses import dataclass
+from pathlib import Path
+
+from behave_gen.plugins.cucumber import migrate_cucumber
+from behave_gen.plugins.cucumber.migrator import MigrationError
+
+
+class MigrateError(Exception):
+    """User-facing error raised by ``migrate``."""
+
+
+@dataclass(frozen=True, slots=True)
+class MigrateOptions:
+    """Options for ``migrate``."""
+
+    source: str
+    out_dir: str = "features"
+
+
+def run_migrate(
+    options: MigrateOptions,
+    project_root: str | Path | None = None,
+) -> int:
+    """CLI entry point for ``behave-gen migrate``."""
+    root = Path(project_root) if project_root is not None else Path.cwd()
+    source = Path(options.source)
+    if not source.is_absolute():
+        source = (root / source).resolve()
+
+    out_dir = Path(options.out_dir)
+    if not out_dir.is_absolute():
+        out_dir = (root / out_dir).resolve()
+
+    try:
+        report = migrate_cucumber(source, out_dir)
+    except MigrationError as exc:
+        print(f"migrate: {exc}", file=sys.stderr)
+        return 1
+
+    for feature in report.features:
+        print(f"Migrated feature {feature}")
+    for skipped in report.skipped:
+        print(f"migrate: skipped {skipped}", file=sys.stderr)
+    for warning in report.warnings:
+        print(f"migrate: warning: {warning}", file=sys.stderr)
+    print(f"\nMigrated {len(report.features)} feature file(s).")
+    return 0

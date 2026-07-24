@@ -1,0 +1,74 @@
+"""OpenAPI generator for behave-gen.
+
+Implements the :class:`Generator` protocol for OpenAPI 3.x specs. Produces
+``.feature`` files grouped by path and an optional concrete HTTP step library.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+from behave_gen.generators.base import GenerationResult
+from behave_gen.plugins.openapi import build_features, build_steps, parse_openapi
+from behave_gen.plugins.openapi.parser import OpenApiParseError
+
+
+class OpenApiGenerator:
+    """Generator for OpenAPI 3.x specs."""
+
+    def can_handle(self, source: Path, config: dict[str, object] | None = None) -> bool:  # noqa: ARG002
+        """Return True if ``source`` looks like an OpenAPI 3.x document."""
+        if not source.is_file():
+            return False
+        try:
+            spec = parse_openapi(source)
+        except OpenApiParseError:
+            return False
+        return spec.openapi_version.startswith("3.")
+
+    def generate(  # noqa: PLR0913 - matches Generator protocol
+        self,
+        source: Path,
+        out_dir: Path,
+        *,
+        step_lib: str | None = None,
+        tag: str | None = None,
+        include_paths: list[str] | None = None,
+        include_methods: list[str] | None = None,
+    ) -> GenerationResult:
+        """Generate features and optional steps from an OpenAPI spec."""
+        spec = parse_openapi(source)
+        features_dir = out_dir / "features"
+        steps_dir = features_dir / "steps"
+        features_dir.mkdir(parents=True, exist_ok=True)
+
+        feature_map = build_features(
+            spec,
+            tag=tag,
+            include_paths=include_paths,
+            include_methods=include_methods,
+        )
+
+        written_features: list[Path] = []
+        for filename, content in feature_map.items():
+            target = features_dir / f"{filename}.feature"
+            target.write_text(content, encoding="utf-8")
+            written_features.append(target)
+
+        written_steps: list[Path] = []
+        if step_lib == "http":
+            steps_dir.mkdir(parents=True, exist_ok=True)
+            steps_text = build_steps(spec, project_name=out_dir.name)
+            steps_file = steps_dir / "http_steps.py"
+            steps_file.write_text(steps_text, encoding="utf-8")
+            written_steps.append(steps_file)
+
+        warnings: list[str] = []
+        if not feature_map:
+            warnings.append("No operations matched the given filters.")
+
+        return GenerationResult(
+            features=tuple(written_features),
+            steps=tuple(written_steps),
+            warnings=tuple(warnings),
+        )
