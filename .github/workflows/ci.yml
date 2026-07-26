@@ -83,7 +83,7 @@ jobs:
               sys.exit(1)
           print("Produced:", *wheels, sep="\n")
           PY
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: dist
           path: dist/
