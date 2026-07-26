@@ -9,43 +9,48 @@ help:
 	@echo "  make format-check  Verify formatting without changes"
 	@echo "  make test          Run the test suite"
 	@echo "  make test-cov      Run tests with coverage"
-	@echo "  make build         Build sdist + wheel into dist/"
+	@echo "  make build         Build sdist + wheel into ref/output/dist/"
 	@echo "  make docs          Build documentation site"
 	@echo "  make docs-serve    Serve documentation locally"
 	@echo "  make clean         Remove build artifacts and caches"
 
 install:
-	pip install -e .
+	python -m pip install -e .
 
 dev:
-	pip install -e ".[dev]"
+	python -m pip install -e ".[dev]"
 
 lint:
-	ruff check .
+	python -m ruff check .
+	python -m mypy --strict behave_gen
 
 lint-fix:
-	ruff check --fix .
+	python -m ruff check --fix .
 
 format:
-	ruff format .
+	python -m ruff format .
 
 format-check:
-	ruff format --check .
+	python -m ruff format --check .
 
 test:
-	pytest
+	python -m pytest
 
 test-cov:
-	pytest --cov=behave_gen --cov-report=term-missing
+	python -m pytest --cov=behave_gen --cov-report=term-missing
 
 build:
-	python -m build
+	python -m build --outdir ref/output/dist
 
 docs:
-	mkdocs build --strict
+	python -m mkdocs build --strict
 
 docs-serve:
-	mkdocs serve
+	python -m mkdocs serve
 
 clean:
-	rm -rf build dist *.egg-info .pytest_cache .mypy_cache .ruff_cache .coverage htmlcov site
+	python -c "import glob, os, pathlib, shutil; \
+	[shutil.rmtree(p, ignore_errors=True) for p in ['build', 'dist', '.pytest_cache', '.mypy_cache', '.ruff_cache', 'htmlcov', 'site']] + \
+	[shutil.rmtree(p, ignore_errors=True) for p in glob.glob('*.egg-info')] + \
+	[shutil.rmtree(p, ignore_errors=True) for p in pathlib.Path('.').rglob('__pycache__')] + \
+	[[os.remove(p) for p in ['.coverage'] if os.path.exists(p)]]"
