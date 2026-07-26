@@ -39,6 +39,7 @@ def check_extra(extra: str) -> DependencyStatus:
 
     Returns:
         A :class:`DependencyStatus` with an install hint when missing.
+
     """
     if extra not in EXTRAS:
         return DependencyStatus(

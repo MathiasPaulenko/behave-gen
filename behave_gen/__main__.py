@@ -9,5 +9,5 @@ import sys
 
 from behave_gen.cli.app import run
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover - entry point exercised via subprocess.
     sys.exit(run(sys.argv[1:]))

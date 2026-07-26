@@ -21,7 +21,8 @@ from behave_gen.config import BehaveGenConfig, load_config_at
 app = typer.Typer(
     name="behave-gen",
     help="Scaffold and evolve Behave BDD projects.",
-    no_args_is_help=True,
+    no_args_is_help=False,
+    invoke_without_command=True,
     add_completion=False,
     rich_markup_mode="rich",
 )
@@ -34,10 +35,10 @@ _CONFIG_OPTION: Annotated[str | None, typer.Option] = typer.Option(
     None, "--config", help="Path to an explicit pyproject.toml config file."
 )
 _VERBOSE_OPTION: Annotated[bool, typer.Option] = typer.Option(
-    False, "--verbose", "-v", help="Enable verbose (DEBUG) output."
+    False, "--verbose", "-v", help="Enable verbose (DEBUG) output.", hidden=True
 )
 _DRY_RUN_OPTION: Annotated[bool, typer.Option] = typer.Option(
-    False, "--dry-run", help="Show what would happen without writing files."
+    False, "--dry-run", help="Show what would happen without writing files.", hidden=True
 )
 
 
@@ -47,8 +48,6 @@ class _GlobalState:
     project: str | None = None
     config: str | None = None
     config_obj: BehaveGenConfig | None = None
-    verbose: bool = False
-    dry_run: bool = False
 
 
 state = _GlobalState()
@@ -67,17 +66,23 @@ def _load_state_config(config_path: str | None) -> BehaveGenConfig | None:
 
 @app.callback()
 def main_callback(
+    ctx: typer.Context,
     project: Annotated[str | None, typer.Option] = _PROJECT_OPTION,
     config: Annotated[str | None, typer.Option] = _CONFIG_OPTION,
     verbose: Annotated[bool, typer.Option] = _VERBOSE_OPTION,
     dry_run: Annotated[bool, typer.Option] = _DRY_RUN_OPTION,
 ) -> None:
-    """Configure global options shared by all subcommands."""
+    """Configure global options shared by all subcommands.
+
+    When no subcommand is given, prints help and exits cleanly with code 0.
+    """
+    if ctx.invoked_subcommand is None:
+        typer.echo(ctx.get_help())
+        raise typer.Exit(0)
+
     state.project = project
     state.config = config
     state.config_obj = _load_state_config(config)
-    state.verbose = verbose
-    state.dry_run = dry_run
 
 
 # --- Project lifecycle -----------------------------------------------------
@@ -300,11 +305,16 @@ def lint_cmd(
     fix: Annotated[bool, typer.Option] = typer.Option(
         False, "--fix", help="Apply fixes where possible."
     ),
+    paths: Annotated[list[str], typer.Option] = typer.Option(
+        [], "--path", help="Path to lint (repeatable); defaults to the features directory."
+    ),
 ) -> None:
     """Lint .feature files via behave-lint."""
     from behave_gen.commands.lint import run_lint
 
-    code = run_lint(project_root=state.project, fix=fix, config=state.config_obj)
+    code = run_lint(
+        project_root=state.project, fix=fix, paths=paths or None, config=state.config_obj
+    )
     raise typer.Exit(code=code)
 
 
@@ -313,11 +323,16 @@ def format_cmd(
     check: Annotated[bool, typer.Option] = typer.Option(
         False, "--check", help="Check formatting without writing."
     ),
+    paths: Annotated[list[str], typer.Option] = typer.Option(
+        [], "--path", help="Path to format (repeatable); defaults to the features directory."
+    ),
 ) -> None:
     """Format .feature files via behave-format."""
     from behave_gen.commands.format import run_format
 
-    code = run_format(project_root=state.project, check=check, config=state.config_obj)
+    code = run_format(
+        project_root=state.project, check=check, paths=paths or None, config=state.config_obj
+    )
     raise typer.Exit(code=code)
 
 
@@ -373,7 +388,7 @@ def update_cmd(
         False, "--data", help="Include behave-data wiring in environment.py."
     ),
     force: Annotated[bool, typer.Option] = typer.Option(
-        False, "--force", help="Regenerate and back up changed files."
+        False, "--force", help="Regenerate generated files even if they have been modified."
     ),
 ) -> None:
     """Re-apply generated environment and step libraries to an existing project."""
@@ -387,11 +402,22 @@ def update_cmd(
 def run(argv: Sequence[str] | None = None) -> int:
     """Programmatic entry point used by tests and ``python -m behave_gen``."""
     try:
-        app(args=list(argv) if argv is not None else None, standalone_mode=False)
+        result = app(args=list(argv) if argv is not None else None, standalone_mode=False)
     except typer.Exit as exc:
         return int(getattr(exc, "code", 1))
     except SystemExit as exc:  # pragma: no cover - defensive.
         return int(exc.code) if isinstance(exc.code, int) else 1
+    except (OSError, RuntimeError) as exc:
+        print(f"behave-gen: {exc}", file=sys.stderr)
+        return 1
+    except Exception as exc:
+        # Click/Typer usage errors (e.g. unknown options) carry an exit_code.
+        exit_code = getattr(exc, "exit_code", None)
+        if isinstance(exit_code, int):
+            return exit_code
+        raise
+    if isinstance(result, int):
+        return result
     return 0
 
 

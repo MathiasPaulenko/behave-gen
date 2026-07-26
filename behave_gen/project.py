@@ -48,13 +48,14 @@ class Project:
         Raises:
             ProjectError: If ``root`` is not a directory, the configuration is
                 invalid, or it cannot be read.
+
         """
         try:
             root_path = resolve_path(root)
             if not root_path.is_dir():
                 raise ProjectError(f"Project root not found: {root_path}")
             resolved_config = config if config is not None else load_config(root_path)
-        except (OSError, ValueError) as exc:
+        except (OSError, RuntimeError, ValueError) as exc:
             raise ProjectError(str(exc)) from exc
 
         instance = cls(
@@ -88,6 +89,7 @@ def find_project_root(start: str | Path) -> Path:
     Raises:
         FileNotFoundError: If no project marker is found up to the filesystem
             root.
+
     """
     current = resolve_path(start)
     if current.is_file():

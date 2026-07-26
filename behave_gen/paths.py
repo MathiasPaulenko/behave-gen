@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import contextlib
 import os
-import re
 import sys
 import uuid
 from pathlib import Path
@@ -25,12 +24,21 @@ _WIN_RESERVED_NAMES = frozenset(
 
 __all__ = [
     "ensure_directory",
+    "is_windows_reserved_name",
     "relative_to",
     "resolve_path",
     "resolve_project_root",
     "safe_write_text",
     "validate_name",
 ]
+
+
+def is_windows_reserved_name(name: str) -> bool:
+    """Return True when ``name`` (or its base before the first dot) is reserved on Windows."""
+    if sys.platform != "win32":
+        return False
+    base = name.split(".", 1)[0].upper()
+    return base in _WIN_RESERVED_NAMES
 
 
 def validate_name(name: str) -> str:
@@ -42,6 +50,7 @@ def validate_name(name: str) -> str:
 
     Raises:
         ValueError: If the name is empty or would be unsafe as a path component.
+
     """
     cleaned = name.strip()
     if not cleaned:
@@ -62,7 +71,7 @@ def validate_name(name: str) -> str:
         raise ValueError("Name cannot contain control characters.")
     if cleaned.endswith("."):
         raise ValueError("Name cannot end with a period.")
-    if sys.platform == "win32" and re.sub(r"\.[\w]+$", "", cleaned).upper() in _WIN_RESERVED_NAMES:
+    if is_windows_reserved_name(cleaned):
         raise ValueError(f"Name is reserved on Windows: {cleaned!r}.")
 
     return cleaned
@@ -85,6 +94,7 @@ def resolve_path(path: str | Path, base: str | Path | None = None) -> Path:
 
     Returns:
         An absolute, normalized :class:`pathlib.Path`.
+
     """
     candidate = Path(path)
     if not candidate.is_absolute():
@@ -118,11 +128,12 @@ def safe_write_text(path: str | Path, content: str) -> None:
 
     The parent directory must already exist. If a symlink exists at ``path``,
     it is replaced rather than followed, preventing symlink-target overwrites.
+    Output always uses LF line endings regardless of platform.
     """
     dst = Path(path)
     tmp = dst.parent / f".write-{uuid.uuid4().hex}.tmp"
     try:
-        tmp.write_text(content, encoding="utf-8")
+        tmp.write_text(content, encoding="utf-8", newline="\n")
         tmp.replace(dst)
     finally:
         with contextlib.suppress(OSError):

@@ -45,6 +45,7 @@ class BehaveGenConfig:
     default_tags: tuple[str, ...] = field(default_factory=tuple)
 
     def __post_init__(self) -> None:
+        """Validate the template engine and normalise default tags."""
         if self.template_engine not in _VALID_TEMPLATE_ENGINES:
             valid = ", ".join(sorted(_VALID_TEMPLATE_ENGINES))
             raise ValueError(
@@ -90,6 +91,7 @@ def load_config_at(path: str | Path) -> BehaveGenConfig:
         FileNotFoundError: If ``path`` does not exist.
         ValueError: If the file cannot be read or decoded as TOML, or contains
             invalid configuration values.
+
     """
     pyproject = Path(path)
     if not pyproject.is_file():
@@ -121,6 +123,7 @@ def load_config(root: str | Path) -> BehaveGenConfig:
     Raises:
         FileNotFoundError: If ``root`` is not a directory.
         ValueError: If the config contains unknown keys or invalid values.
+
     """
     root_path = Path(root)
     if not root_path.is_dir():
@@ -136,6 +139,8 @@ def load_config(root: str | Path) -> BehaveGenConfig:
 def _build_config(data: dict[str, Any]) -> BehaveGenConfig:
     """Build a :class:`BehaveGenConfig` from parsed ``pyproject.toml`` data."""
     tool_section = data.get("tool", {})
+    if not isinstance(tool_section, dict):
+        raise ValueError("[tool] must be a table.")
     raw = tool_section.get(CONFIG_TABLE, {})
     if not raw:
         return BehaveGenConfig.default()
@@ -177,7 +182,7 @@ def _normalize_tags(tags: tuple[str, ...]) -> tuple[str, ...]:
     for tag in tags:
         if not isinstance(tag, str):
             raise ValueError(f"default_tags must be strings, got {type(tag).__name__}.")
-        for part in tag.split():
+        for part in tag.replace(",", " ").split():
             if part:
                 parts.append(part)
     return tuple(parts)
@@ -186,9 +191,9 @@ def _normalize_tags(tags: tuple[str, ...]) -> tuple[str, ...]:
 def _coerce_tags(value: Any, key: str) -> tuple[str, ...]:  # noqa: ANN401
     parts: list[str] = []
     if isinstance(value, str):
-        parts = value.split()
+        parts = value.replace(",", " ").split()
     elif isinstance(value, list) and all(isinstance(item, str) for item in value):
-        parts = [tag for item in value for tag in item.split()]
+        parts = [tag for item in value for tag in item.replace(",", " ").split()]
     else:
         raise ValueError(f"[tool.{CONFIG_TABLE}] {key} must be a string or list of strings.")
     return tuple(part for part in parts if part)
