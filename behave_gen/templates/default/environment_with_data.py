@@ -10,25 +10,25 @@ from behave_data import setup_data
 
 
 def before_all(context) -> None:
-    """Called once before any feature runs; wires behave-data hooks."""
+    """Wire behave-data hooks before any feature runs."""
     setup_data(context)
 
 
 def after_all(context) -> None:
-    """Called once after all features have run."""
+    """Run once after all features have run."""
 
 
 def before_feature(context, feature) -> None:
-    """Called before each feature."""
+    """Run before each feature."""
 
 
 def after_feature(context, feature) -> None:
-    """Called after each feature."""
+    """Run after each feature."""
 
 
 def before_scenario(context, scenario) -> None:
-    """Called before each scenario."""
+    """Run before each scenario."""
 
 
 def after_scenario(context, scenario) -> None:
-    """Called after each scenario."""
+    """Run after each scenario."""

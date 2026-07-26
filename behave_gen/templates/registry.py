@@ -19,6 +19,7 @@ class TemplateRegistry:
     """Registry mapping template-set names to :class:`TemplateSet` instances."""
 
     def __init__(self) -> None:
+        """Create an empty template registry."""
         self._sets: dict[str, TemplateSet] = {}
 
     def register(self, template_set: TemplateSet) -> None:
@@ -36,6 +37,7 @@ class TemplateRegistry:
 
         Raises:
             KeyError: If the name is not registered, with the available names.
+
         """
         try:
             return self._sets[name]

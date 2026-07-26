@@ -10,25 +10,25 @@ from behave_kit import setup as setup_kit
 
 
 def before_all(context) -> None:
-    """Called once before any feature runs; wires behave-kit fixtures."""
+    """Wire behave-kit fixtures before any feature runs."""
     setup_kit(context)
 
 
 def after_all(context) -> None:
-    """Called once after all features have run."""
+    """Run once after all features have run."""
 
 
 def before_feature(context, feature) -> None:
-    """Called before each feature."""
+    """Run before each feature."""
 
 
 def after_feature(context, feature) -> None:
-    """Called after each feature."""
+    """Run after each feature."""
 
 
 def before_scenario(context, scenario) -> None:
-    """Called before each scenario."""
+    """Run before each scenario."""
 
 
 def after_scenario(context, scenario) -> None:
-    """Called after each scenario."""
+    """Run after each scenario."""

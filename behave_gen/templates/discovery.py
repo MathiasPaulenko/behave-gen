@@ -15,6 +15,7 @@ from importlib.resources.abc import Traversable
 from pathlib import Path, PurePath
 from typing import Any
 
+from behave_gen.paths import safe_write_text
 from behave_gen.templates.engine import TemplateEngine, TemplateRenderError
 
 
@@ -40,6 +41,7 @@ class TemplateSet:
         Args:
             root: Directory containing template files.
             name: Optional name; defaults to the directory name.
+
         """
         root_path = Path(root).resolve()
         if not root_path.is_dir():
@@ -81,6 +83,7 @@ class TemplateSet:
 
         Returns:
             The list of written file paths.
+
         """
         skip_names = skip or frozenset()
         rename_map = rename or {}
@@ -103,13 +106,18 @@ class TemplateSet:
                     f"Invalid rename path {new_rel!r}: must be relative and not contain '..'."
                 )
             target = dest_root / new_rel
-            target.parent.mkdir(parents=True, exist_ok=True)
-            rendered = engine.render(
-                template_file.content,
-                context,
-                filename=rel_str,
-            )
-            target.write_text(rendered, encoding="utf-8")
+            try:
+                target.parent.mkdir(parents=True, exist_ok=True)
+                rendered = engine.render(
+                    template_file.content,
+                    context,
+                    filename=rel_str,
+                )
+                safe_write_text(target, rendered)
+            except OSError as exc:
+                raise TemplateRenderError(
+                    f"Could not write template output {target}: {exc}"
+                ) from exc
             written.append(target)
         return written
 
@@ -128,7 +136,7 @@ def _collect_path_files(root_path: Path) -> list[TemplateFile]:
             continue
         try:
             content = resolved.read_text(encoding="utf-8")
-        except UnicodeDecodeError:
+        except (OSError, UnicodeDecodeError):
             continue
         rel = resolved.relative_to(root_path)
         files.append(TemplateFile(relative_path=rel, content=content))
@@ -150,7 +158,7 @@ def _collect_traversable_files(
             continue
         try:
             content = child.read_text(encoding="utf-8")
-        except UnicodeDecodeError:
+        except (OSError, UnicodeDecodeError):
             continue
         rel = prefix / child.name
         files.append(TemplateFile(relative_path=rel, content=content))
