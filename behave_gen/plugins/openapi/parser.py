@@ -131,6 +131,7 @@ def parse_openapi(source: str | Path) -> OpenApiSpec:
     Raises:
         OpenApiParseError: If the document is missing, unreadable, or not a
             valid OpenAPI 3.x mapping.
+
     """
     path = Path(source)
     if not path.is_file():
@@ -138,6 +139,9 @@ def parse_openapi(source: str | Path) -> OpenApiSpec:
 
     doc = _load_document(path)
     openapi_version = doc.get("openapi")
+    # YAML may parse an unquoted 3.1 or 3.0 as a float; normalize to string.
+    if isinstance(openapi_version, float):
+        openapi_version = str(openapi_version)
     if not isinstance(openapi_version, str) or not openapi_version.startswith("3."):
         version_repr = repr(openapi_version) if openapi_version is not None else "<missing>"
         raise OpenApiParseError(

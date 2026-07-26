@@ -41,6 +41,22 @@ class PostmanCollection:
     requests: tuple[PostmanRequest, ...] = field(default_factory=tuple)
 
 
+def _stringify_url_part(part: Any) -> str | None:
+    """Render a Postman URL host/path segment to a string, handling variables."""
+    if part is None:
+        return None
+    if isinstance(part, str):
+        return part
+    if isinstance(part, dict):
+        value = part.get("value")
+        if isinstance(value, str):
+            return value
+        key = part.get("key")
+        if isinstance(key, str):
+            return key
+    return str(part)
+
+
 def _resolve_url(url_field: Any) -> str:
     """Resolve a Postman URL field (string or object) to a plain URL string."""
     if url_field is None:
@@ -54,15 +70,22 @@ def _resolve_url(url_field: Any) -> str:
         host = url_field.get("host")
         path = url_field.get("path", [])
         if isinstance(host, list):
-            host_str = ".".join(str(p) for p in host if p is not None)
+            host_str = ".".join(p for p in (_stringify_url_part(p) for p in host) if p is not None)
         elif isinstance(host, str):
             host_str = host
         else:
             host_str = ""
         if isinstance(path, list):
-            path_str = "/".join(str(p) for p in path if p is not None)
+            path_str = "/".join(p for p in (_stringify_url_part(p) for p in path) if p is not None)
         else:
             path_str = str(path)
+        if host_str:
+            protocol = url_field.get("protocol")
+            if isinstance(protocol, str) and protocol:
+                host_str = f"{protocol}://{host_str}"
+            else:
+                # Without a scheme urlparse cannot extract the netloc, so use a safe default.
+                host_str = f"http://{host_str}"
         return f"{host_str}/{path_str}".rstrip("/")
     return str(url_field)
 
@@ -82,7 +105,10 @@ def _extract_requests(items: list[Any], parent_folder: str = "") -> list[Postman
         if not isinstance(request, dict):
             continue
         method_raw = request.get("method", "GET")
-        method = str(method_raw).lower() if isinstance(method_raw, str) else "get"
+        if isinstance(method_raw, str) and method_raw.strip():
+            method = method_raw.strip().lower()
+        else:
+            method = "get"
         url = _resolve_url(request.get("url"))
         requests.append(PostmanRequest(name=name, method=method, url=url, folder=parent_folder))
     return requests
@@ -94,6 +120,7 @@ def parse_postman(source: str | Path) -> PostmanCollection:
     Raises:
         PostmanParseError: If the file is missing, not valid JSON, or not a
             Postman v2.1 collection.
+
     """
     path = Path(source)
     if not path.is_file():

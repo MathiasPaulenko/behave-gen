@@ -39,6 +39,7 @@ class PostmanGenerator:
         default_tags: tuple[str, ...] = (),
         include_paths: list[str] | None = None,  # noqa: ARG002 - not used
         include_methods: list[str] | None = None,  # noqa: ARG002 - not used
+        project_name: str | None = None,
     ) -> GenerationResult:
         """Generate features and optional steps from a Postman collection."""
         collection = parse_postman(source)
@@ -57,7 +58,9 @@ class PostmanGenerator:
         written_steps: list[Path] = []
         if step_lib == "http":
             steps_dir.mkdir(parents=True, exist_ok=True)
-            steps_text = build_http_step_module(project_name=out_dir.name)
+            steps_text = build_http_step_module(
+                project_name=project_name if project_name is not None else out_dir.name
+            )
             steps_file = steps_dir / "http_steps.py"
             safe_write_text(steps_file, steps_text)
             written_steps.append(steps_file)

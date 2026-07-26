@@ -20,6 +20,8 @@ __all__ = ["SwaggerParseError", "convert_swagger_to_openapi"]
 # Reject specs larger than 10 MiB before reading them into memory.
 _MAX_SPEC_SIZE_BYTES = 10 * 1024 * 1024
 
+_SUPPORTED_SWAGGER_VERSION = "2.0"
+
 
 class SwaggerParseError(Exception):
     """Raised when a Swagger 2.0 document cannot be converted."""
@@ -86,6 +88,7 @@ def convert_swagger_to_openapi(source: str | Path) -> OpenApiSpec:
 
     Raises:
         SwaggerParseError: If the document is missing or not Swagger 2.0.
+
     """
     path = Path(source)
     if not path.is_file():
@@ -93,10 +96,14 @@ def convert_swagger_to_openapi(source: str | Path) -> OpenApiSpec:
 
     doc = _load_swagger(path)
     swagger_version = doc.get("swagger")
-    if not isinstance(swagger_version, str) or swagger_version != "2.0":
+    # YAML may parse an unquoted 2.0 as a float, so normalize numeric 2.0.
+    if isinstance(swagger_version, float) and str(swagger_version) == _SUPPORTED_SWAGGER_VERSION:
+        swagger_version = _SUPPORTED_SWAGGER_VERSION
+    if not isinstance(swagger_version, str) or swagger_version != _SUPPORTED_SWAGGER_VERSION:
         version_repr = repr(swagger_version) if swagger_version is not None else "<missing>"
         raise SwaggerParseError(
-            f"Unsupported Swagger version {version_repr}. Only 2.0 is supported."
+            f"Unsupported Swagger version {version_repr}. "
+            f"Only {_SUPPORTED_SWAGGER_VERSION} is supported."
         )
 
     # Minimal conversion: rewrite the version key. Path items are structurally

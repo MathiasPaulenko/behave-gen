@@ -38,6 +38,7 @@ class OpenApiGenerator:
         default_tags: tuple[str, ...] = (),
         include_paths: list[str] | None = None,
         include_methods: list[str] | None = None,
+        project_name: str | None = None,
     ) -> GenerationResult:
         """Generate features and optional steps from an OpenAPI spec file."""
         spec = parse_openapi(source)
@@ -47,7 +48,7 @@ class OpenApiGenerator:
             step_lib=step_lib,
             tag=tag,
             default_tags=default_tags,
-            project_name=out_dir.name,
+            project_name=project_name,
             include_paths=include_paths,
             include_methods=include_methods,
         )
@@ -60,7 +61,7 @@ class OpenApiGenerator:
         step_lib: str | None = None,
         tag: str | None = None,
         default_tags: tuple[str, ...] = (),
-        project_name: str = "openapi_project",
+        project_name: str | None = None,
         include_paths: list[str] | None = None,
         include_methods: list[str] | None = None,
     ) -> GenerationResult:
@@ -86,7 +87,7 @@ class OpenApiGenerator:
         written_steps: list[Path] = []
         if step_lib == "http":
             steps_dir.mkdir(parents=True, exist_ok=True)
-            steps_text = build_steps(spec, project_name=project_name)
+            steps_text = build_steps(spec, project_name=project_name or out_dir.name)
             steps_file = steps_dir / "http_steps.py"
             safe_write_text(steps_file, steps_text)
             written_steps.append(steps_file)

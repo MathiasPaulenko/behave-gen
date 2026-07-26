@@ -30,6 +30,7 @@ class MigrationReport:
 
     @property
     def written_files(self) -> tuple[Path, ...]:
+        """Return the paths of feature files written during migration."""
         return self.features
 
 
@@ -119,6 +120,7 @@ def migrate_cucumber(source: str | Path, out_dir: str | Path) -> MigrationReport
 
     Raises:
         MigrationError: If ``source`` does not exist or contains no features.
+
     """
     src = Path(source).resolve()
     if not src.exists():

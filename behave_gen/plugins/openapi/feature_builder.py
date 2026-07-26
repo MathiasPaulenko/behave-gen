@@ -6,8 +6,10 @@ by path. Each path becomes one feature file with one scenario per HTTP method.
 
 from __future__ import annotations
 
+import re
 from collections import defaultdict
 
+from behave_gen.paths import is_windows_reserved_name
 from behave_gen.plugins.openapi.parser import OpenApiOperation, OpenApiSpec
 
 # Avoid exceeding common filesystem filename limits while leaving room for the
@@ -20,25 +22,50 @@ def _safe_filename(path: str) -> str:
     cleaned = path.strip("/").replace("/", "_").replace("{", "").replace("}", "")
     cleaned = "".join(ch if ch.isalnum() or ch in {"_", "-"} else "_" for ch in cleaned)
     cleaned = cleaned or "root"
+    if is_windows_reserved_name(cleaned):
+        cleaned += "_"
     if len(cleaned) > _MAX_FEATURE_FILENAME_LEN:
         cleaned = cleaned[:_MAX_FEATURE_FILENAME_LEN]
     return cleaned
 
 
+def _unique_filename(base: str, existing: set[str]) -> str:
+    """Return a filename that is not already in ``existing``.
+
+    If ``base`` is taken, appends ``_2``, ``_3``, ... while respecting the
+    maximum filename length.
+    """
+    if base not in existing:
+        return base
+    counter = 2
+    while True:
+        suffix = f"_{counter}"
+        candidate = f"{base[: _MAX_FEATURE_FILENAME_LEN - len(suffix)]}{suffix}"
+        if candidate not in existing:
+            return candidate
+        counter += 1
+
+
+def _clean_text(value: str) -> str:
+    """Collapse all whitespace (including newlines) to single spaces and strip."""
+    return " ".join(value.split())
+
+
 def _humanize(path: str) -> str:
-    """Turn ``/users/{id}`` into ``Users by id``."""
+    """Turn ``/users/{id}`` into ``Users By Id``."""
     parts = [p for p in path.strip("/").split("/") if p]
     human: list[str] = []
     for part in parts:
         if part.startswith("{") and part.endswith("}"):
             human.append(f"by {part[1:-1]}")
         else:
-            human.append(part.replace("_", " ").replace("-", " ").capitalize())
-    return " ".join(human) or "Root"
+            spaced = part.replace("_", " ").replace("-", " ")
+            human.append(re.sub(r"\b\w", lambda match: match.group(0).upper(), spaced))
+    return _clean_text(" ".join(human)) or "Root"
 
 
 def _format_header_tags(tags: tuple[str, ...]) -> str:
-    """Render tag parts as a ``@tag1 @tag2\\n`` prefix line."""
+    r"""Render tag parts as a ``@tag1 @tag2\n`` prefix line."""
     if not tags:
         return ""
     normalized = [t if t.startswith("@") else f"@{t}" for t in tags]
@@ -50,14 +77,14 @@ def _collect_tags(tag: str | None, default_tags: tuple[str, ...]) -> tuple[str, 
     parts: list[str] = []
     parts.extend(default_tags)
     if tag:
-        parts.extend(tag.split())
+        parts.extend(tag.replace(",", " ").split())
     return tuple(parts)
 
 
 def _scenario_for(operation: OpenApiOperation) -> str:
     """Build a single scenario block for an operation."""
     method = operation.method.upper()
-    title = operation.summary or f"{method} {operation.path}"
+    title = _clean_text(operation.summary or f"{method} {operation.path}")
     lines = [
         f"  Scenario: {title}",
         f'    When I send a {method} request to "{operation.path}"',
@@ -100,6 +127,7 @@ def build_features(
 
     Returns:
         Mapping of filename (without extension) -> feature file text.
+
     """
     path_ops: dict[str, list[OpenApiOperation]] = defaultdict(list)
     path_filter = set(include_paths) if include_paths else None
@@ -114,7 +142,9 @@ def build_features(
         path_ops[op.path].append(op)
 
     result: dict[str, str] = {}
+    used: set[str] = set()
     for path, ops in path_ops.items():
-        filename = _safe_filename(path)
+        filename = _unique_filename(_safe_filename(path), used)
+        used.add(filename)
         result[filename] = build_feature_text(path, ops, title=spec.title, tags=merged_tags)
     return result

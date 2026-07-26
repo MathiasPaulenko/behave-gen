@@ -36,6 +36,7 @@ class SwaggerGenerator:
         default_tags: tuple[str, ...] = (),
         include_paths: list[str] | None = None,
         include_methods: list[str] | None = None,
+        project_name: str | None = None,
     ) -> GenerationResult:
         """Generate features and optional steps from a Swagger 2.0 spec."""
         spec = convert_swagger_to_openapi(source)
@@ -46,7 +47,7 @@ class SwaggerGenerator:
             step_lib=step_lib,
             tag=tag,
             default_tags=default_tags,
-            project_name=out_dir.name,
+            project_name=project_name,
             include_paths=include_paths,
             include_methods=include_methods,
         )

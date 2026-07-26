@@ -46,6 +46,7 @@ class Generator(Protocol):
         default_tags: tuple[str, ...] = (),
         include_paths: list[str] | None = None,
         include_methods: list[str] | None = None,
+        project_name: str | None = None,
     ) -> GenerationResult:
         """Generate Behave artifacts from ``source`` into ``out_dir``."""
         ...
