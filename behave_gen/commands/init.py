@@ -33,7 +33,7 @@ class InitOptions:
     template_engine: str = "string"
 
 
-def init_project(
+def init_project(  # noqa: PLR0912 - force overwrite has many filesystem-state branches.
     target_dir: str | Path,
     options: InitOptions,
     registry: TemplateRegistry | None = None,
@@ -51,6 +51,7 @@ def init_project(
     Raises:
         InitError: If the target exists and ``force`` is not set, the template
             is unknown, the project name is invalid, or rendering fails.
+
     """
     try:
         name = validate_name(options.name)
@@ -71,7 +72,12 @@ def init_project(
         if not options.force:
             raise InitError(f"Directory already exists: {project_root}. Use --force to overwrite.")
         try:
-            if project_root.is_symlink() or project_root.is_file():
+            if project_root.is_symlink():
+                if project_root.is_dir() and sys.platform == "win32":
+                    project_root.rmdir()
+                else:
+                    project_root.unlink()
+            elif project_root.is_file():
                 project_root.unlink()
             else:
                 shutil.rmtree(project_root)

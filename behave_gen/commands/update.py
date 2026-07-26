@@ -78,7 +78,10 @@ def _remove_target_safely(target: Path, root: Path) -> str | None:
             label = target.name
         return f"{label} is a directory; skipping"
     try:
-        target.unlink(missing_ok=True)
+        if is_symlink and is_dir and sys.platform == "win32":
+            target.rmdir()
+        else:
+            target.unlink(missing_ok=True)
     except OSError as exc:
         return f"Could not remove {target}: {exc}"
     return None

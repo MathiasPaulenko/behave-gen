@@ -29,9 +29,11 @@ def run_lint(
         project_root: Project root (defaults to cwd).
         fix: When True, pass ``--fix`` to behave-lint.
         paths: Optional explicit paths to lint; defaults to the features dir.
+        config: Optional explicit behave-gen config.
 
     Returns:
         The behave-lint exit code, or ``0`` when the extra is missing.
+
     """
     root = resolve_project_root(project_root)
     try:

@@ -29,9 +29,11 @@ def run_format(
         project_root: Project root (defaults to cwd).
         check: When True, pass ``--check`` to behave-format (no writes).
         paths: Optional explicit paths to format; defaults to the features dir.
+        config: Optional explicit behave-gen config.
 
     Returns:
         The behave-format exit code, or ``0`` when the extra is missing.
+
     """
     root = resolve_project_root(project_root)
     try:

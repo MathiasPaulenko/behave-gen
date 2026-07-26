@@ -46,6 +46,7 @@ class CheckReport:
     exit_code: int = 0
 
     def to_dict(self) -> dict[str, Any]:
+        """Return a JSON-serialisable dictionary representation."""
         return {
             "project": self.project,
             "available": self.available,
@@ -55,6 +56,18 @@ class CheckReport:
             "suggestions": [asdict(s) for s in self.suggestions],
             "exit_code": self.exit_code,
         }
+
+
+def _to_int_line(value: object) -> int:
+    """Convert a behave-doctor line value to a safe integer, defaulting to 0."""
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str):
+        try:
+            return int(value)
+        except ValueError:
+            return 0
+    return 0
 
 
 def _suggest_for_undefined(step_text: str) -> str:
@@ -79,7 +92,7 @@ def _build_report_from_doctor(project_root: Path, raw_report: Any) -> CheckRepor
             "severity": str(getattr(diag, "severity", "")),
             "message": getattr(diag, "message", ""),
             "file": str(getattr(diag, "file", "")),
-            "line": int(getattr(diag, "line", 0) or 0),
+            "line": _to_int_line(getattr(diag, "line", 0)),
             "suggestion": getattr(diag, "suggestion", ""),
         }
         errors.append(entry)

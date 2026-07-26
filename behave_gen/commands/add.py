@@ -6,6 +6,7 @@ later phases.
 
 from __future__ import annotations
 
+import re
 import string
 import sys
 from dataclasses import dataclass
@@ -34,7 +35,7 @@ def _tag_parts(tags: str | None) -> tuple[str, ...]:
 
 
 def _format_tag_line(parts: tuple[str, ...]) -> str:
-    """Render tag parts as a ``@tag1 @tag2\\n`` prefix line.
+    r"""Render tag parts as a ``@tag1 @tag2\n`` prefix line.
 
     Returns an empty string when no tags are provided, so the template
     collapses to ``Feature: ...``.
@@ -73,8 +74,9 @@ class AddFeatureOptions:
 
 
 def _humanize(name: str) -> str:
-    """Turn a slug like ``user_login`` into ``User login``."""
-    return name.replace("_", " ").replace("-", " ").replace("#", " ").capitalize()
+    """Turn a slug like ``user_login`` into ``User Login``."""
+    spaced = name.replace("_", " ").replace("-", " ").replace("#", " ")
+    return re.sub(r"\b\w", lambda match: match.group(0).upper(), spaced)
 
 
 def add_feature(
@@ -99,6 +101,7 @@ def add_feature(
     Raises:
         AddError: If the project/features dir is missing, the template is
             unknown, the name is invalid, or the generated file fails to parse.
+
     """
     try:
         name = validate_name(options.name)

@@ -93,6 +93,7 @@ def add_environment(
     Raises:
         EnvironmentError: If the project root is missing or the file cannot be
             written.
+
     """
     root = Path(project_root).resolve()
     if not root.is_dir():
@@ -120,7 +121,10 @@ def add_environment(
         raise EnvironmentError(f"Cannot overwrite directory: {target}")
     try:
         if target.exists() or target.is_symlink():
-            target.unlink()
+            if target.is_symlink() and target.is_dir() and sys.platform == "win32":
+                target.rmdir()
+            else:
+                target.unlink()
     except OSError as exc:
         raise EnvironmentError(f"Could not remove existing file {target}: {exc}") from exc
 
@@ -184,6 +188,7 @@ def add_config(
     Raises:
         EnvironmentError: If the project root or pyproject.toml is missing, or
             the config name is unknown.
+
     """
     root = Path(project_root).resolve()
     if not root.is_dir():
@@ -195,6 +200,8 @@ def add_config(
 
     package_spec, extra = _CONFIG_PACKAGES[name]
     config_path = Path(pyproject) if pyproject is not None else root / "pyproject.toml"
+    if not config_path.is_absolute():
+        config_path = root / config_path
     config_path = config_path.resolve()
     if not config_path.is_relative_to(root):
         raise EnvironmentError(
@@ -225,12 +232,89 @@ def add_config(
     return config_path
 
 
+def _normalize_newlines(text: str) -> str:
+    """Collapse Windows/Mac line endings to Unix-style LF for TOML editing."""
+    return text.replace("\r\n", "\n").replace("\r", "\n")
+
+
 def _find_section(lines: list[str], header: str, start: int = 0) -> int | None:
     """Return the index of a TOML table header, or None."""
     for i in range(start, len(lines)):
         if lines[i].strip() == header:
             return i
     return None
+
+
+def _insert_into_inline_array(extra_line: str, package_spec: str) -> str | None:
+    """Insert ``package_spec`` into an inline extra array, if present.
+
+    Returns the updated line when ``extra_line`` is an inline array, or
+    ``None`` when it is not. The original line is returned unchanged when the
+    package is already present.
+    """
+    open_bracket = extra_line.find("[")
+    close_bracket = _find_unquoted_close_bracket(extra_line)
+    if open_bracket == -1 or close_bracket is None or close_bracket <= open_bracket:
+        return None
+    prefix = extra_line[: open_bracket + 1]
+    content = extra_line[open_bracket + 1 : close_bracket]
+    suffix = extra_line[close_bracket:]
+    tokens = re.findall(r'"[^"]*"|\'[^\']*\'', content)
+    if any(token[1:-1] == package_spec for token in tokens):
+        return extra_line
+    content = content.rstrip()
+    if not content:
+        new_content = f'"{package_spec}"'
+    elif content.endswith(","):
+        new_content = content + f' "{package_spec}"'
+    else:
+        new_content = content + f', "{package_spec}"'
+    new_line = f"{prefix}{new_content}{suffix}"
+    if not new_line.endswith("\n"):
+        new_line += "\n"
+    return new_line
+
+
+def _find_unquoted_close_bracket(line: str) -> int | None:
+    """Return the index of the first unquoted, uncommented ``]`` in ``line``."""
+    in_string: str | None = None
+    for i, ch in enumerate(line):
+        if in_string is None:
+            if ch in {'"', "'"}:
+                in_string = ch
+            elif ch == "#":
+                break
+            elif ch == "]":
+                return i
+        elif ch == in_string and (i == 0 or line[i - 1] != "\\"):
+            in_string = None
+    return None
+
+
+def _split_close_line(line: str) -> tuple[str | None, str]:
+    r"""Split a multiline-array close line into its element and ``]`` lines.
+
+    ``kit = [\n    "pkg"]\n`` becomes ``(\"    \\"pkg\\",\n\", \"    ]\n\")``.
+    When the line is just a closing bracket, the first element is ``None``.
+    """
+    close_idx = _find_unquoted_close_bracket(line)
+    if close_idx is None:
+        return None, line
+
+    content_part = line[:close_idx]
+    close_rest = line[close_idx:]
+    content_stripped = content_part.strip()
+    if not content_stripped:
+        return None, line
+
+    indent = content_part[: len(content_part) - len(content_part.lstrip())]
+    if not content_stripped.endswith(","):
+        content_stripped += ","
+    content_line = f"{indent}{content_stripped}\n"
+    close_line = f"{indent}{close_rest}"
+    if not close_line.endswith("\n"):
+        close_line += "\n"
+    return content_line, close_line
 
 
 def _insert_optional_dependency(  # noqa: PLR0912 - TOML tree walk is inherently branchy.
@@ -243,12 +327,11 @@ def _insert_optional_dependency(  # noqa: PLR0912 - TOML tree walk is inherently
     If the section or extra does not exist, it is created. Returns the updated
     text, or the original text if the dependency is already present.
     """
-    lines = text.splitlines(keepends=True)
+    lines = _normalize_newlines(text).splitlines(keepends=True)
     opt_idx = _find_section(lines, "[project.optional-dependencies]")
     if opt_idx is None:
         return _create_optional_section(lines, extra, package_spec)
 
-    extra_header = f"{extra} = ["
     section_end: int | None = None
     for i in range(opt_idx + 1, len(lines)):
         stripped = lines[i].strip()
@@ -258,8 +341,9 @@ def _insert_optional_dependency(  # noqa: PLR0912 - TOML tree walk is inherently
     end_idx = section_end if section_end is not None else len(lines)
 
     extra_idx: int | None = None
+    extra_pattern = re.compile(rf"^\s*{re.escape(extra)}\s*=\s*\[")
     for i in range(opt_idx + 1, end_idx):
-        if lines[i].strip().startswith(extra_header):
+        if extra_pattern.match(lines[i].split("#", 1)[0]):
             extra_idx = i
             break
 
@@ -274,9 +358,14 @@ def _insert_optional_dependency(  # noqa: PLR0912 - TOML tree walk is inherently
         lines[insert_at:insert_at] = block
         return "".join(lines)
 
+    updated = _insert_into_inline_array(lines[extra_idx], package_spec)
+    if updated is not None:
+        lines[extra_idx] = updated
+        return "".join(lines)
+
     close_idx: int | None = None
     for j in range(extra_idx + 1, end_idx):
-        if lines[j].strip() == "]":
+        if _find_unquoted_close_bracket(lines[j]) is not None:
             close_idx = j
             break
     if close_idx is None:
@@ -284,7 +373,15 @@ def _insert_optional_dependency(  # noqa: PLR0912 - TOML tree walk is inherently
         lines.insert(end_idx, f'    "{package_spec}",\n')
         return "".join(lines)
 
-    existing_pattern = re.compile(rf'^\s*"{re.escape(package_spec)}"\s*,?\s*$')
+    content_line, close_line = _split_close_line(lines[close_idx])
+    if content_line is not None:
+        lines[close_idx : close_idx + 1] = [content_line, close_line]
+        close_idx += 1
+
+    quote_group = r"['\"]"
+    existing_pattern = re.compile(
+        rf"^\s*{quote_group}{re.escape(package_spec)}{quote_group}\s*,?\s*(?:#.*)?$"
+    )
     for j in range(extra_idx + 1, close_idx):
         if existing_pattern.search(lines[j]):
             return text
@@ -294,7 +391,11 @@ def _insert_optional_dependency(  # noqa: PLR0912 - TOML tree walk is inherently
 
 
 def _create_optional_section(lines: list[str], extra: str, package_spec: str) -> str:
-    """Create ``[project.optional-dependencies]`` and the requested extra."""
+    """Create ``[project.optional-dependencies]`` and the requested extra.
+
+    ``lines`` is expected to have Unix line endings; callers must normalize
+    Windows-style line endings before invoking this helper.
+    """
     block = [
         "\n",
         "[project.optional-dependencies]\n",

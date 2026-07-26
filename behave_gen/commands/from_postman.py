@@ -49,7 +49,8 @@ def run_from_postman(
 
     out_dir = Path(options.out_dir)
     if not out_dir.is_absolute():
-        out_dir = (project.root / out_dir).resolve()
+        out_dir = project.root / out_dir
+    out_dir = out_dir.resolve()
     if not out_dir.is_relative_to(project.root):
         print(
             f"from-postman: Output directory must be inside project root: {out_dir}",
@@ -72,6 +73,7 @@ def run_from_postman(
             step_lib=options.step_lib,
             tag=options.tag,
             default_tags=project.config.default_tags,
+            project_name=project.root.name,
         )
     except (PostmanParseError, OSError) as exc:
         print(f"from-postman: {exc}", file=sys.stderr)

@@ -38,6 +38,7 @@ class StatsReport:
     warnings: tuple[str, ...] = field(default_factory=tuple)
 
     def to_dict(self) -> dict[str, Any]:
+        """Return a JSON-serialisable dictionary representation."""
         return asdict(self)
 
 
@@ -53,7 +54,7 @@ def _feature_files(directory: Path) -> list[Path]:
     return files
 
 
-def _collect_stats(project: Project) -> StatsReport:
+def _collect_stats(project: Project) -> StatsReport:  # noqa: PLR0912 - stats aggregation has many defensive checks.
     """Walk the project's features directory and aggregate statistics."""
     features_dir = project.features_dir
     if not features_dir.is_dir():
@@ -104,6 +105,9 @@ def _collect_stats(project: Project) -> StatsReport:
         total_features += 1
         files.append(str(resolved.relative_to(project.root)))
         all_tags.update(str(t) for t in getattr(feature, "tags", []) or [])
+        background = getattr(feature, "background", None)
+        if background:
+            total_steps += len(getattr(background, "steps", []) or [])
         for scenario in getattr(feature, "scenarios", []) or []:
             total_scenarios += 1
             cls_name = type(scenario).__name__

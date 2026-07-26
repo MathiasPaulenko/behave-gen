@@ -26,23 +26,27 @@ def _render_tags(tags: Any, indent: str = "") -> list[str]:
     tag_list = list(tags or [])
     if not tag_list:
         return []
-    rendered = " ".join(str(t) for t in tag_list)
+    rendered = " ".join(str(t) if str(t).startswith("@") else f"@{t}" for t in tag_list)
     return [f"{indent}{rendered}"]
 
 
 def _render_table(table: Any, indent: str) -> list[str]:
     """Render a behave model table as Gherkin pipe-separated rows."""
     rows = list(getattr(table, "rows", []) or [])
-    if not rows:
+    headings = list(getattr(table, "headings", []) or [])
+    if not headings and rows:
+        headings = list(getattr(rows[0], "cells", []) or [])
+        rows = rows[1:]
+    if not headings:
         return []
-    headers = list(getattr(rows[0], "cells", []) or [])
-    all_rows = [headers] + [list(getattr(r, "cells", []) or []) for r in rows[1:]]
+    data_rows = [list(getattr(r, "cells", []) or []) for r in rows]
+    all_rows = [headings] + data_rows
     widths = [
         max(
             len(str(row[i] if row[i] is not None else "")) if i < len(row) else 0
             for row in all_rows
         )
-        for i in range(len(headers))
+        for i in range(len(headings))
     ]
     lines: list[str] = []
     for row in all_rows:

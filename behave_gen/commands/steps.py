@@ -76,6 +76,7 @@ def add_steps(
     Raises:
         AddStepsError: If the project is missing, the library is unknown, or
             the file already exists.
+
     """
     if options.lib not in _BUILTIN_LIBRARIES:
         available = ", ".join(_available_libraries())
@@ -109,7 +110,7 @@ def add_steps(
         )
 
     raw = _load_step_template(template_name)
-    project_name = root.name
+    project_name = root.name.replace("\\", "\\\\").replace('"', '\\"')
     try:
         rendered = string.Template(raw).substitute(project_name=project_name)
     except KeyError as exc:

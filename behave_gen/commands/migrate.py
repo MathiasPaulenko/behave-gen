@@ -55,7 +55,8 @@ def run_migrate(
 
     out_dir = Path(options.out_dir)
     if not out_dir.is_absolute():
-        out_dir = (project.root / out_dir).resolve()
+        out_dir = project.root / out_dir
+    out_dir = out_dir.resolve()
     if not out_dir.is_relative_to(project.root):
         print(
             f"migrate: Output directory must be inside project root: {out_dir}",
