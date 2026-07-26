@@ -23,8 +23,8 @@ pre-commit install
 | `make format`       | Format the code with `ruff format`.          |
 | `make format-check` | Verify formatting without changes.           |
 | `make test`         | Run the test suite.                          |
-| `make test-cov`     | Run tests with coverage (fail under 90%).    |
-| `make build`        | Build sdist + wheel into `dist/`.            |
+| `make test-cov`     | Run tests with coverage (fail under 80%).    |
+| `make build`        | Build sdist + wheel into `ref/output/dist/`. |
 | `make clean`        | Remove build artifacts and caches.           |
 
 ## Pre-PR checklist
@@ -33,7 +33,7 @@ Before opening a pull request, make sure all of the following pass:
 
 - [ ] `make lint` (ruff check + mypy --strict)
 - [ ] `make format-check` (ruff format --check)
-- [ ] `make test-cov` passes with >= 90% coverage
+- [ ] `make test-cov` passes with >= 80% coverage (configured in `pyproject.toml`)
 - [ ] New behavior is covered by tests
 - [ ] `CHANGELOG.md` updated under `[Unreleased]`
 

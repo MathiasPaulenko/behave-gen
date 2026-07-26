@@ -42,6 +42,13 @@ behave-format), and migrates Cucumber projects to Behave.
 pip install behave-gen
 ```
 
+### Requirements
+
+- Python 3.11 or newer.
+- A working `pip` / `venv` environment.
+
+Optional extras extend functionality as shown below.
+
 With optional extras:
 
 ```bash
@@ -158,10 +165,23 @@ pre-commit install
 | `make format-check` | Verify formatting without changes. |
 | `make test` | Run the test suite. |
 | `make test-cov` | Run tests with coverage. |
-| `make build` | Build sdist + wheel into `dist/`. |
+| `make build` | Build sdist + wheel into `ref/output/dist/`. |
 | `make clean` | Remove build artifacts and caches. |
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for full guidelines.
+
+## Documentation
+
+Full documentation, including the CLI reference, configuration guide, and
+Python API docs, is published at
+[mathiaspaulenko.github.io/behave-gen](https://mathiaspaulenko.github.io/behave-gen/).
+
+## Acknowledgements
+
+- Built on top of [Behave](https://behave.readthedocs.io/) and the Python
+  packaging ecosystem.
+- Template and scaffolding patterns inspired by the Python open source
+  community's emphasis on minimal, composable tools.
 
 ## License
 

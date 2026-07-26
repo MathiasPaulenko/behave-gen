@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Windows reserved-name validation for multi-dot names (e.g. `COM1.tar.gz`).
+- `add_config` handling of inline and multiline `optional-dependencies` arrays with comments and quoted strings.
+- OpenAPI/Swagger/Postman version parsing for numeric YAML/JSON values.
+- Postman URL resolution for dictionary host/path segments and missing protocol.
+- Empty or whitespace HTTP methods defaulting to `get` in Postman collections.
+- Postman URL path variable rendering.
+- Template discovery and rendering `OSError` handling.
+- Feature filename sanitization for Windows reserved device names.
+- Relative and absolute path resolution for generated output directories.
+- Docstring coverage and style across the source package, including missing
+  public-method, `__init__`, `__post_init__`, and argument descriptions.
+- Escape-heavy docstrings in `add.py`, `environment.py`, and feature builders
+  now use raw strings to satisfy D301.
+
+### Changed
+
+- `pyproject.toml` uses the PEP 621 `license` table and adds the `Typing :: Typed`,
+  `Environment :: Console`, and `Operating System :: OS Independent` classifiers.
+- Source distribution now includes `tests`, `examples`, `docs`, `Makefile`,
+  `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, and `SECURITY.md` alongside the
+  source package.
+- `dev` extras now include `bandit` and `pip-audit`.
+- `Makefile` uses `python -m` consistently, builds into `ref/output/dist/`, and
+  provides a cross-platform `clean` target.
+- AGENTS.md, CONTRIBUTING.md, README.md, and docs now point to `ref/output/dist/`
+  and use `python -m` / `pip_audit` consistently.
+- CONTRIBUTING.md coverage threshold and PR template checklist aligned to 80%.
+- `ruff` excludes generated `ref/output` artifacts and the `examples/` directory.
+- `ruff` lint select now includes `D` (pydocstyle) for the source package with
+  `D203` and `D213` ignored and `tests/**` excluded.
+- Global `--dry-run` and `--verbose` options are hidden from `--help` because they
+  are accepted for backward compatibility but not yet implemented.
+
 ## [1.0.0] - 2026-07-24
 
 ### Tests

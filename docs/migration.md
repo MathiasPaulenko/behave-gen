@@ -103,5 +103,4 @@ migrated/
 | Option | Default | Description |
 | ------ | ------- | ----------- |
 | `SOURCE_DIR` | _required_ | Cucumber project to migrate. |
-| `--out-dir` | `.` | Output directory for the Behave project. |
-| `--from` | `java` | Source language (`java`, `ruby`). |
+| `--out-dir` | `migrated` | Output directory for the Behave project. |

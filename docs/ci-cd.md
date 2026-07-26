@@ -20,7 +20,7 @@ jobs:
         with:
           python-version: "3.13"
       - run: pip install behave-gen[doctor]
-      - run: behave-gen check --no-color
+      - run: behave-gen check
 ```
 
 ### Full pipeline
@@ -41,7 +41,7 @@ jobs:
         with:
           python-version: "3.13"
       - run: pip install behave-gen[all]
-      - run: behave-gen check --no-color
+      - run: behave-gen check
       - run: behave-gen lint
       - run: behave-gen format --check
       - run: behave --dry-run
@@ -64,10 +64,10 @@ Use behave-gen as a pre-commit hook:
 ```yaml
 repos:
   - repo: https://github.com/MathiasPaulenko/behave-gen
-    rev: v0.1.0
+    rev: v1.0.0
     hooks:
       - id: behave-gen-check
-        args: ["check", "--no-color"]
+        args: ["check"]
 ```
 
 ## Exit codes

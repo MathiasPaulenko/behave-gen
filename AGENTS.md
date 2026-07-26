@@ -7,12 +7,12 @@ Run these before committing or finishing a task:
 ```bash
 python -m ruff check .
 python -m ruff format --check .
-python -m mypy behave_gen
+python -m mypy --strict behave_gen
 python -m pytest
 python -m pytest --cov=behave_gen --cov-report=term-missing
 python -m bandit -r behave_gen
 python -m pip_audit .
-python -m build --outdir ref/output/dist --wheel
+python -m build --outdir ref/output/dist
 ```
 
 ## Project conventions

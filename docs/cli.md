@@ -5,9 +5,7 @@ All commands share these global options:
 | Option | Description |
 | ------ | ----------- |
 | `--project PATH` | Project root directory (default: current working directory). |
-| `--config PATH` | Path to an explicit `pyproject.toml` config file (reserved). |
-| `--verbose, -v` | Enable verbose output (reserved). |
-| `--dry-run` | Show what would happen without writing files (reserved). |
+| `--config PATH` | Path to an explicit `pyproject.toml` config file. |
 
 ---
 

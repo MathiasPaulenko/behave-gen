@@ -24,7 +24,7 @@ pre-commit install
 | `make format-check` | Verify formatting without changes. |
 | `make test` | Run the test suite. |
 | `make test-cov` | Run tests with coverage. |
-| `make build` | Build sdist + wheel into `dist/`. |
+| `make build` | Build sdist + wheel into `ref/output/dist/`. |
 | `make docs-serve` | Serve documentation locally. |
 | `make clean` | Remove build artifacts and caches. |
 
