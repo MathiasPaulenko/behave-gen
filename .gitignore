@@ -80,6 +80,7 @@ ref/
 /demo/
 /test-project/
 /sandbox/
+/testdry/
 /features/
 /environment.py
 /behave.toml
