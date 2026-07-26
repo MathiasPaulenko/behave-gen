@@ -32,6 +32,13 @@ def test_add_feature_creates_file(tmp_path: Path) -> None:
     assert "Scenario: Login scenario" in content
 
 
+def test_add_feature_humanizes_multi_word_slug(tmp_path: Path) -> None:
+    root = _make_project(tmp_path)
+    path = add_feature(root, AddFeatureOptions(name="user_login"))
+    content = path.read_text(encoding="utf-8")
+    assert "Feature: User Login" in content
+
+
 def test_add_feature_parses_with_behave_model(tmp_path: Path) -> None:
     root = _make_project(tmp_path)
     path = add_feature(root, AddFeatureOptions(name="checkout"))

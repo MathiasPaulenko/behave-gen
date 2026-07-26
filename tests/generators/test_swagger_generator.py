@@ -81,6 +81,16 @@ def test_run_from_swagger_with_step_lib(tmp_path: Path, monkeypatch: pytest.Monk
     assert (tmp_path / "gen" / "features" / "steps" / "http_steps.py").is_file()
 
 
+def test_generator_step_lib_uses_project_name(tmp_path: Path) -> None:
+    gen = SwaggerGenerator()
+    out = tmp_path / "out"
+    gen.generate(
+        FIXTURES / "petstore_swagger2.json", out, step_lib="http", project_name="MyProject"
+    )
+    content = (out / "features" / "steps" / "http_steps.py").read_text(encoding="utf-8")
+    assert "HTTP step definitions for MyProject" in content
+
+
 def test_run_from_swagger_with_tag(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.chdir(tmp_path)
     result = runner.invoke(

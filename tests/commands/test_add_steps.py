@@ -40,6 +40,16 @@ def test_add_steps_auth_creates_file(tmp_path: Path) -> None:
     assert "_Session" in content
 
 
+def test_add_steps_escapes_special_project_name(tmp_path: Path) -> None:
+    if sys.platform == "win32":
+        pytest.skip("Windows directory names cannot contain quotes or backslashes.")
+    root = tmp_path / 'demo"project\\path'
+    root.mkdir()
+    path = add_steps(root, AddStepsOptions(lib="http"))
+    content = path.read_text(encoding="utf-8")
+    assert '"""HTTP step definitions for demo\\"project\\\\path.' in content
+
+
 def test_add_steps_no_pass_skeletons(tmp_path: Path) -> None:
     root = _make_project(tmp_path)
     for lib in ("http", "auth"):

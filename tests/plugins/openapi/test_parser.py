@@ -73,6 +73,29 @@ def test_parse_swagger_2_raises() -> None:
         parse_openapi(FIXTURES / "swagger2.json")
 
 
+def test_parse_json_numeric_openapi_version_accepted(tmp_path: Path) -> None:
+    """JSON specs with a numeric 3.x version must be accepted."""
+    path = tmp_path / "spec.json"
+    path.write_text(
+        '{"openapi": 3.0, "info": {"title": "t", "version": "1"}, "paths": {}}',
+        encoding="utf-8",
+    )
+    spec = parse_openapi(path)
+    assert spec.openapi_version.startswith("3.")
+
+
+def test_parse_yaml_unquoted_openapi_version_accepted(tmp_path: Path) -> None:
+    """YAML specs with an unquoted 3.x version must be accepted."""
+    pytest.importorskip("yaml")
+    path = tmp_path / "spec.yaml"
+    path.write_text(
+        "openapi: 3.0\ninfo:\n  title: t\n  version: '1'\npaths: {}\n",
+        encoding="utf-8",
+    )
+    spec = parse_openapi(path)
+    assert spec.openapi_version.startswith("3.")
+
+
 def test_operation_id_falls_back_to_method_path() -> None:
     spec = parse_openapi(FIXTURES / "petstore.json")
     users_get = next(op for op in spec.operations if op.path == "/users")

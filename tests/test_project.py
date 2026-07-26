@@ -86,3 +86,16 @@ def test_project_from_root_rejects_escaping_config_paths(tmp_path: Path) -> None
     config = BehaveGenConfig.default().with_overrides(features_dir="../outside")
     with pytest.raises(ProjectError, match="escapes project root"):
         Project.from_root(tmp_path, config=config)
+
+
+def test_project_from_root_catches_runtime_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """RuntimeError raised by Path.resolve() (e.g. symlink loops) must not escape."""
+
+    def _boom(self: Path) -> Path:
+        raise RuntimeError("simulated resolve failure")
+
+    monkeypatch.setattr("behave_gen.paths.Path.resolve", _boom)
+    with pytest.raises(ProjectError, match="simulated resolve failure"):
+        Project.from_root(tmp_path)

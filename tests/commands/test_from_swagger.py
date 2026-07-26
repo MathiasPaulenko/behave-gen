@@ -46,3 +46,16 @@ def test_from_swagger_accepts_absolute_spec(tmp_path: Path) -> None:
         project_root=root,
     )
     assert rc == 0
+
+
+def test_from_swagger_resolves_absolute_out_dir_with_dotdot(tmp_path: Path) -> None:
+    """An absolute out_dir with parent-directory components must be normalized."""
+    root = _make_project(tmp_path)
+    spec = _FIXTURES / "petstore_swagger2.json"
+    out_dir = str(root / "gen" / ".." / "gen")
+    rc = run_from_swagger(
+        FromSwaggerOptions(spec=str(spec), out_dir=out_dir),
+        project_root=root,
+    )
+    assert rc == 0
+    assert (root / "gen" / "features").is_dir()

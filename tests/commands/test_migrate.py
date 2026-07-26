@@ -71,6 +71,18 @@ def test_run_migrate_outside_project_root_fails(tmp_path: Path) -> None:
     assert rc == 1
 
 
+def test_run_migrate_resolves_absolute_out_dir_with_dotdot(tmp_path: Path) -> None:
+    """An absolute out_dir with parent-directory components must be normalized."""
+    project = init_project(tmp_path, InitOptions(name="proj"))
+    out_dir = str(project / "migrated" / ".." / "migrated")
+    rc = run_migrate(
+        MigrateOptions(source=str(FIXTURES), out_dir=out_dir),
+        project_root=project,
+    )
+    assert rc == 0
+    assert (project / "migrated" / "features").is_dir()
+
+
 def test_run_migrate_destination_file_blocking_fails(tmp_path: Path) -> None:
     project = init_project(tmp_path, InitOptions(name="proj"))
     (project / "migrated" / "features").parent.mkdir(parents=True)

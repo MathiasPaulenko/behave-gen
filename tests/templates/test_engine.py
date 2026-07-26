@@ -35,6 +35,23 @@ def test_string_engine_missing_placeholder_includes_filename() -> None:
         engine.render("$missing", {}, filename="README.md")
 
 
+def test_string_engine_render_file_wraps_write_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An OSError while writing a rendered template must raise TemplateRenderError."""
+    src = tmp_path / "src.txt"
+    src.write_text("Hello $name", encoding="utf-8")
+    dst = tmp_path / "dst.txt"
+
+    def _failing_write(path: Path, content: str) -> None:
+        raise OSError("permission denied")
+
+    monkeypatch.setattr("behave_gen.templates.engine.safe_write_text", _failing_write)
+    engine = get_engine("string")
+    with pytest.raises(TemplateRenderError, match="permission denied"):
+        engine.render_file(src, dst, {"name": "world"})
+
+
 def test_get_engine_unknown_raises() -> None:
     with pytest.raises(ValueError, match="Unknown template engine"):
         get_engine("mako")
@@ -115,6 +132,23 @@ def test_template_set_render_to_rejects_escaping_rename(tmp_path: Path) -> None:
     ts = TemplateSet.from_directory(root)
     with pytest.raises(TemplateRenderError, match="Invalid rename path"):
         ts.render_to(tmp_path / "out", {}, get_engine("string"), rename={"a.txt": "../escape.txt"})
+
+
+def test_template_set_render_to_wraps_write_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An OSError while writing a template output must raise TemplateRenderError."""
+    root = tmp_path / "tpl"
+    root.mkdir()
+    (root / "a.txt").write_text("a", encoding="utf-8")
+    ts = TemplateSet.from_directory(root)
+
+    def _failing_write(path: Path, content: str) -> None:
+        raise OSError("permission denied")
+
+    monkeypatch.setattr("behave_gen.templates.discovery.safe_write_text", _failing_write)
+    with pytest.raises(TemplateRenderError, match="permission denied"):
+        ts.render_to(tmp_path / "out", {}, get_engine("string"))
 
 
 # --- Registry ---------------------------------------------------------------

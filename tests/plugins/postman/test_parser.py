@@ -74,3 +74,54 @@ def test_resolve_url_handles_none_and_missing_url() -> None:
     assert _resolve_url(None) == ""
     assert _resolve_url({}) == ""
     assert _resolve_url("https://api.example.com/users") == "https://api.example.com/users"
+
+
+def test_resolve_url_handles_dict_path_segments() -> None:
+    """URL path variables must be rendered from their value, not as dict reprs."""
+    url = {
+        "host": ["api", "example", "com"],
+        "path": ["users", {"key": "id", "value": ":id"}],
+    }
+    assert _resolve_url(url) == "http://api.example.com/users/:id"
+
+
+def test_resolve_url_dict_segment_falls_back_to_key() -> None:
+    url = {
+        "host": ["api", "example", "com"],
+        "path": [{"key": "userId"}],
+    }
+    assert _resolve_url(url) == "http://api.example.com/userId"
+
+
+def test_resolve_url_includes_protocol_when_present() -> None:
+    """Reconstructed object URLs preserve the protocol so the path can be extracted."""
+    url = {
+        "protocol": "https",
+        "host": ["api", "example", "com"],
+        "path": ["users"],
+    }
+    assert _resolve_url(url) == "https://api.example.com/users"
+
+
+def test_resolve_url_object_path_extracts_to_root_path() -> None:
+    """When a reconstructed object URL is parsed, only the path is kept."""
+    url = {
+        "protocol": "https",
+        "host": ["api", "example", "com"],
+        "path": ["users", "123"],
+    }
+    assert url_to_path(_resolve_url(url)) == "/users/123"
+
+
+def test_parse_collection_defaults_empty_method_to_get(tmp_path: Path) -> None:
+    """Empty or whitespace-only methods must default to 'get'."""
+    path = tmp_path / "empty_method.json"
+    path.write_text(
+        '{"info": {"name": "x", "schema": "https://schema.getpostman.com/json/collection/v2.1.0/"},'
+        '"item": [{"name": "r1", "request": {"method": "", "url": "https://example.com/a"}},'
+        '{"name": "r2", "request": {"method": "   ", "url": "https://example.com/b"}}]}',
+        encoding="utf-8",
+    )
+    collection = parse_postman(path)
+    methods = {r.method for r in collection.requests}
+    assert methods == {"get"}

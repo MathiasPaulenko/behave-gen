@@ -107,6 +107,21 @@ def test_stats_report_to_dict() -> None:
     assert d["steps"] == 10
 
 
+def test_stats_counts_background_steps(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    root = _make_project(tmp_path)
+    (root / "features" / "sample.feature").unlink()
+    (root / "features" / "with_background.feature").write_text(
+        "Feature: Bg\n\n  Background:\n    Given setup\n\n  Scenario: S\n    Given step\n",
+        encoding="utf-8",
+    )
+    monkeypatch.chdir(root)
+    result = runner.invoke(app, ["stats", "--format", "json"])
+    assert result.exit_code == 0, result.output
+    payload = json.loads(result.stdout)
+    assert payload["scenarios"] == 1
+    assert payload["steps"] == 2  # background + scenario
+
+
 def test_stats_skips_symlinked_feature_outside_root(tmp_path: Path) -> None:
     root = _make_project(tmp_path)
     outside = tmp_path / "outside.feature"

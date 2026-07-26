@@ -41,6 +41,12 @@ def test_load_config_no_table_returns_default(tmp_path: Path) -> None:
     assert config == BehaveGenConfig.default()
 
 
+def test_load_config_tool_not_a_table_raises(tmp_path: Path) -> None:
+    (tmp_path / "pyproject.toml").write_text('tool = "string"\n', encoding="utf-8")
+    with pytest.raises(ValueError, match=r"\[tool\] must be a table"):
+        load_config(tmp_path)
+
+
 def test_load_config_reads_known_keys(tmp_path: Path) -> None:
     (tmp_path / "pyproject.toml").write_text(
         "[tool.behave-gen]\n"
@@ -85,6 +91,14 @@ def test_as_dict_roundtrip() -> None:
 def test_load_config_default_tags_flattens_strings_with_whitespace(tmp_path: Path) -> None:
     (tmp_path / "pyproject.toml").write_text(
         '[tool.behave-gen]\ndefault_tags = ["smoke api", "regression"]\n', encoding="utf-8"
+    )
+    config = load_config(tmp_path)
+    assert config.default_tags == ("smoke", "api", "regression")
+
+
+def test_load_config_default_tags_handles_commas(tmp_path: Path) -> None:
+    (tmp_path / "pyproject.toml").write_text(
+        '[tool.behave-gen]\ndefault_tags = ["smoke,api", "regression"]\n', encoding="utf-8"
     )
     config = load_config(tmp_path)
     assert config.default_tags == ("smoke", "api", "regression")

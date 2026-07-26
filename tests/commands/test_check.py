@@ -12,7 +12,9 @@ from behave_gen.cli.app import app
 from behave_gen.commands.check import (
     CheckReport,
     CheckSuggestion,
+    _build_report_from_doctor,
     _suggest_for_undefined,
+    _to_int_line,
     run_check,
 )
 from behave_gen.commands.init import InitOptions, init_project
@@ -148,3 +150,30 @@ def test_check_cli_exits_cleanly(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     monkeypatch.chdir(root)
     result = runner.invoke(app, ["check"])
     assert result.exit_code in (0, 1)
+
+
+def test_to_int_line_handles_various_types() -> None:
+    assert _to_int_line(42) == 42
+    assert _to_int_line("42") == 42
+    assert _to_int_line("not-a-number") == 0
+    assert _to_int_line(None) == 0
+    assert _to_int_line("") == 0
+
+
+def test_build_report_from_doctor_handles_non_numeric_line() -> None:
+    class _Diag:
+        rule_id = "undefined-step"
+        rule_name = "Undefined step"
+        severity = "error"
+        message = "I do x"
+        file = "features/x.feature"
+        line = "not-a-line"
+        suggestion = ""
+
+    class _Raw:
+        errors = [_Diag()]
+        warnings = []
+        exit_code = 1
+
+    report = _build_report_from_doctor(Path("/proj"), _Raw())
+    assert report.errors[0]["line"] == 0

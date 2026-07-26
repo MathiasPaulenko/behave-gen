@@ -78,6 +78,45 @@ def test_preview_cli(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     assert "Feature: Demo" in result.output
 
 
+def test_preview_renders_tags_with_at_prefix(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = _make_project(tmp_path)
+    monkeypatch.chdir(root)
+    feature = root / "features" / "demo.feature"
+    feature.write_text(
+        "@demo\nFeature: Demo\n\n  @smoke\n  Scenario: A\n    Given step\n",
+        encoding="utf-8",
+    )
+    result = runner.invoke(app, ["preview", "features/demo.feature"])
+    assert result.exit_code == 0, result.output
+    assert "@demo" in result.output
+    assert "@smoke" in result.output
+    # Make sure tags are not rendered bare (without @).
+    assert result.output.count("smoke\n") == 0 or "@smoke" in result.output
+
+
+def test_preview_renders_outline_table_header(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = _make_project(tmp_path)
+    monkeypatch.chdir(root)
+    feature = root / "features" / "demo.feature"
+    feature.write_text(
+        "Feature: Demo\n\n"
+        "  Scenario Outline: SO\n"
+        "    Given input <value>\n\n"
+        "    Examples:\n"
+        "      | value |\n"
+        "      | 1     |\n",
+        encoding="utf-8",
+    )
+    result = runner.invoke(app, ["preview", "features/demo.feature"])
+    assert result.exit_code == 0, result.output
+    assert "| value |" in result.output
+    assert "| 1" in result.output
+
+
 def test_preview_non_utf8_file_returns_one(tmp_path: Path) -> None:
     root = _make_project(tmp_path)
     feature = root / "features" / "demo.feature"

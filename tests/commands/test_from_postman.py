@@ -46,3 +46,16 @@ def test_from_postman_accepts_absolute_collection(tmp_path: Path) -> None:
         project_root=root,
     )
     assert rc == 0
+
+
+def test_from_postman_resolves_absolute_out_dir_with_dotdot(tmp_path: Path) -> None:
+    """An absolute out_dir with parent-directory components must be normalized."""
+    root = _make_project(tmp_path)
+    collection = _FIXTURES / "sample_collection.json"
+    out_dir = str(root / "gen" / ".." / "gen")
+    rc = run_from_postman(
+        FromPostmanOptions(collection=str(collection), out_dir=out_dir),
+        project_root=root,
+    )
+    assert rc == 0
+    assert (root / "gen" / "features").is_dir()
