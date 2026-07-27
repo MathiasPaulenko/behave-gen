@@ -140,7 +140,7 @@ def test_build_features_avoids_windows_reserved_filenames(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Windows reserved device names must not be used as feature filenames."""
-    monkeypatch.setattr("sys.platform", "win32")
+    monkeypatch.setattr("os.name", "nt")
     spec = OpenApiSpec(
         title="API",
         version="1.0",

@@ -82,7 +82,7 @@ def test_safe_write_text_uses_lf_line_endings(tmp_path: Path) -> None:
 
 def test_is_windows_reserved_name_detects_reserved_names(monkeypatch: pytest.MonkeyPatch) -> None:
     """Reserved names and their dotted variants are detected on Windows."""
-    monkeypatch.setattr("sys.platform", "win32")
+    monkeypatch.setattr("os.name", "nt")
     assert is_windows_reserved_name("CON")
     assert is_windows_reserved_name("COM1")
     assert is_windows_reserved_name("COM1.tar.gz")
