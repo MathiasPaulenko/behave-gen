@@ -142,11 +142,10 @@ def _build_config(data: dict[str, Any]) -> BehaveGenConfig:
     if not isinstance(tool_section, dict):
         raise ValueError("[tool] must be a table.")
     raw = tool_section.get(CONFIG_TABLE, {})
-    if not raw:
-        return BehaveGenConfig.default()
-
     if not isinstance(raw, dict):
         raise ValueError(f"[tool.{CONFIG_TABLE}] must be a table, got {type(raw).__name__}.")
+    if not raw:
+        return BehaveGenConfig.default()
 
     unknown = set(raw) - _VALID_KEYS
     if unknown:
