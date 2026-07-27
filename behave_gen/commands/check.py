@@ -58,8 +58,8 @@ class CheckReport:
         }
 
 
-def _to_int_line(value: object) -> int:
-    """Convert a behave-doctor line value to a safe integer, defaulting to 0."""
+def _safe_int(value: object) -> int:
+    """Convert an arbitrary value to a safe integer, defaulting to 0."""
     if isinstance(value, int):
         return value
     if isinstance(value, str):
@@ -68,6 +68,11 @@ def _to_int_line(value: object) -> int:
         except ValueError:
             return 0
     return 0
+
+
+def _to_int_line(value: object) -> int:
+    """Convert a behave-doctor line value to a safe integer, defaulting to 0."""
+    return _safe_int(value)
 
 
 def _suggest_for_undefined(step_text: str) -> str:
@@ -112,7 +117,7 @@ def _build_report_from_doctor(project_root: Path, raw_report: Any) -> CheckRepor
             }
         )
 
-    exit_code = int(getattr(raw_report, "exit_code", 0))
+    exit_code = _safe_int(getattr(raw_report, "exit_code", 0))
     return CheckReport(
         project=str(project_root),
         available=True,

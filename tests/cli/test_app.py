@@ -6,6 +6,7 @@ import re
 from pathlib import Path
 
 import pytest
+import typer
 from typer.testing import CliRunner
 
 import behave_gen.__main__  # noqa: F401 - entry point is importable without side effects.
@@ -102,6 +103,16 @@ def test_run_invalid_config_returns_one() -> None:
 def test_run_unknown_option_returns_nonzero() -> None:
     """Unknown options must not crash the programmatic entry point."""
     assert run(["--not-a-real-option"]) != 0
+
+
+def test_run_propagates_typer_exit_code(monkeypatch: pytest.MonkeyPatch) -> None:
+    """typer.Exit codes must be returned by the programmatic entry point."""
+
+    def _raise(*_args: object, **_kwargs: object) -> object:
+        raise typer.Exit(code=7)
+
+    monkeypatch.setattr("behave_gen.cli.app.app", _raise)
+    assert run([]) == 7
 
 
 @pytest.mark.parametrize("exc_cls,msg", [(OSError, "bad path"), (RuntimeError, "loop")])

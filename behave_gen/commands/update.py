@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from behave_gen.commands.environment import AddEnvironmentOptions, add_environment
-from behave_gen.commands.steps import AddStepsOptions, add_steps
+from behave_gen.commands.steps import _BUILTIN_LIBRARIES, AddStepsOptions, add_steps
 from behave_gen.config import BehaveGenConfig
 from behave_gen.paths import resolve_project_root
 from behave_gen.project import Project, ProjectError
@@ -61,32 +61,6 @@ def _is_generated(path: Path) -> bool:
     return _BEHAVE_GEN_MARKER in text
 
 
-def _remove_target_safely(target: Path, root: Path) -> str | None:
-    """Remove ``target`` if it is a generated file or symlink.
-
-    Returns an error message if the target cannot be removed, otherwise None.
-    """
-    try:
-        is_dir = target.is_dir()
-        is_symlink = target.is_symlink()
-    except OSError as exc:
-        return f"Could not inspect {target}: {exc}"
-    if is_dir and not is_symlink:
-        try:
-            label = str(target.relative_to(root))
-        except ValueError:
-            label = target.name
-        return f"{label} is a directory; skipping"
-    try:
-        if is_symlink and is_dir and sys.platform == "win32":
-            target.rmdir()
-        else:
-            target.unlink(missing_ok=True)
-    except OSError as exc:
-        return f"Could not remove {target}: {exc}"
-    return None
-
-
 def _update_step_libraries(project: Project, force: bool) -> tuple[list[str], list[str], list[str]]:
     """Re-apply built-in step libraries that already exist in the project."""
     updated: list[str] = []
@@ -96,11 +70,7 @@ def _update_step_libraries(project: Project, force: bool) -> tuple[list[str], li
     if not steps_dir.is_dir():
         return updated, skipped, warnings
 
-    library_files = {
-        "http": "http_steps.py",
-        "auth": "auth_steps.py",
-    }
-    for lib, filename in library_files.items():
+    for lib, (_template_name, filename) in _BUILTIN_LIBRARIES.items():
         target = steps_dir / filename
         if not target.exists() and not target.is_symlink():
             continue
@@ -108,12 +78,6 @@ def _update_step_libraries(project: Project, force: bool) -> tuple[list[str], li
             rel = target.relative_to(project.root)
             skipped.append(str(rel))
             warnings.append(f"Skipped {rel}: not a behave-gen file. Use --force to override.")
-            continue
-
-        error = _remove_target_safely(target, project.root)
-        if error:
-            rel = target.relative_to(project.root)
-            warnings.append(f"Failed to update {rel}: {error}")
             continue
 
         tmp_path = steps_dir / f".update-{uuid.uuid4().hex}.tmp"
@@ -144,11 +108,6 @@ def _update_environment(project: Project, options: UpdateOptions) -> tuple[list[
         return updated, warnings
     if not options.force and not _is_generated(env_file):
         warnings.append("Skipped environment.py: not a behave-gen file. Use --force to override.")
-        return updated, warnings
-
-    error = _remove_target_safely(env_file, project.root)
-    if error:
-        warnings.append(f"Failed to update environment.py: {error}")
         return updated, warnings
 
     try:

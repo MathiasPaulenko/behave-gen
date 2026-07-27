@@ -13,6 +13,7 @@ from behave_gen.commands.check import (
     CheckReport,
     CheckSuggestion,
     _build_report_from_doctor,
+    _safe_int,
     _suggest_for_undefined,
     _to_int_line,
     run_check,
@@ -177,3 +178,32 @@ def test_build_report_from_doctor_handles_non_numeric_line() -> None:
 
     report = _build_report_from_doctor(Path("/proj"), _Raw())
     assert report.errors[0]["line"] == 0
+
+
+def test_safe_int_handles_various_types() -> None:
+    assert _safe_int(42) == 42
+    assert _safe_int("42") == 42
+    assert _safe_int("not-a-number") == 0
+    assert _safe_int(None) == 0
+    assert _safe_int("") == 0
+
+
+def test_build_report_from_doctor_handles_non_numeric_exit_code() -> None:
+    """A non-numeric behave-doctor exit_code must not crash the report builder."""
+
+    class _Diag:
+        rule_id = "undefined-step"
+        rule_name = "Undefined step"
+        severity = "error"
+        message = "I do x"
+        file = "features/x.feature"
+        line = 1
+        suggestion = ""
+
+    class _Raw:
+        errors = [_Diag()]
+        warnings = []
+        exit_code = "not-a-number"
+
+    report = _build_report_from_doctor(Path("/proj"), _Raw())
+    assert report.exit_code == 0

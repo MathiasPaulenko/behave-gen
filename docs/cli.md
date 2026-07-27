@@ -410,7 +410,7 @@ behave-gen update [OPTIONS]
 | ------ | ------- | ----------- |
 | `--kit` | `false` | Include behave-kit wiring in `environment.py`. |
 | `--data` | `false` | Include behave-data wiring in `environment.py`. |
-| `--force` | `false` | Regenerate and back up changed files. |
+| `--force` | `false` | Regenerate files even if they were user-modified. |
 
 **Example:**
 

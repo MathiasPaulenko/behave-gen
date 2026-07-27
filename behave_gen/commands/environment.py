@@ -67,7 +67,8 @@ def _project_name(root: Path) -> str:
         data = tomllib.loads(text)
     except tomllib.TOMLDecodeError:
         return root.name
-    name = data.get("project", {}).get("name")
+    project_section = data.get("project")
+    name = project_section.get("name") if isinstance(project_section, dict) else None
     if isinstance(name, str) and name:
         return name
     return root.name
@@ -119,14 +120,6 @@ def add_environment(
         raise EnvironmentError(f"Environment file {target} must be inside project root {root}.")
     if target.is_dir() and not target.is_symlink():
         raise EnvironmentError(f"Cannot overwrite directory: {target}")
-    try:
-        if target.exists() or target.is_symlink():
-            if target.is_symlink() and target.is_dir() and sys.platform == "win32":
-                target.rmdir()
-            else:
-                target.unlink()
-    except OSError as exc:
-        raise EnvironmentError(f"Could not remove existing file {target}: {exc}") from exc
 
     try:
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -259,7 +252,7 @@ def _insert_into_inline_array(extra_line: str, package_spec: str) -> str | None:
     prefix = extra_line[: open_bracket + 1]
     content = extra_line[open_bracket + 1 : close_bracket]
     suffix = extra_line[close_bracket:]
-    tokens = re.findall(r'"[^"]*"|\'[^\']*\'', content)
+    tokens = re.findall(r'"(?:[^"\\]|\\.)*"|\'[^\']*\'', content)
     if any(token[1:-1] == package_spec for token in tokens):
         return extra_line
     content = content.rstrip()
@@ -286,8 +279,20 @@ def _find_unquoted_close_bracket(line: str) -> int | None:
                 break
             elif ch == "]":
                 return i
-        elif ch == in_string and (i == 0 or line[i - 1] != "\\"):
-            in_string = None
+        elif ch == in_string:
+            if in_string == "'":
+                # Literal strings: no escape sequences, backslash is literal.
+                in_string = None
+            else:
+                # Basic strings: count consecutive backslashes before the quote.
+                # Even count means the quote is not escaped.
+                backslashes = 0
+                j = i - 1
+                while j >= 0 and line[j] == "\\":
+                    backslashes += 1
+                    j -= 1
+                if backslashes % 2 == 0:
+                    in_string = None
     return None
 
 

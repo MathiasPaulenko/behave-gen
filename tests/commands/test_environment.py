@@ -14,6 +14,7 @@ from behave_gen.cli.app import app
 from behave_gen.commands.environment import (
     AddEnvironmentOptions,
     EnvironmentError,
+    _find_unquoted_close_bracket,
     add_config,
     add_environment,
     run_add_config,
@@ -469,17 +470,22 @@ def test_add_config_raises_on_write_error(tmp_path: Path, monkeypatch: pytest.Mo
         add_config(root, "behave-kit")
 
 
-def test_add_environment_raises_on_remove_error(
+def test_add_environment_preserves_existing_file_on_write_failure(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """When safe_write_text fails, the existing environment.py must be preserved."""
     root = _make_project(tmp_path)
+    env_file = root / "environment.py"
+    original = env_file.read_text(encoding="utf-8")
 
     def _raise(*args: object, **kwargs: object) -> None:
-        raise OSError("nope")
+        raise OSError("disk full")
 
-    monkeypatch.setattr(Path, "unlink", _raise)
-    with pytest.raises(EnvironmentError, match="Could not remove existing file"):
+    monkeypatch.setattr("behave_gen.commands.environment.safe_write_text", _raise)
+    with pytest.raises(EnvironmentError, match="Could not write environment file"):
         add_environment(root, AddEnvironmentOptions())
+    # The original file must still be intact.
+    assert env_file.read_text(encoding="utf-8") == original
 
 
 def test_add_environment_raises_on_mkdir_error(
@@ -506,3 +512,56 @@ def test_add_environment_raises_on_write_error(
     monkeypatch.setattr("behave_gen.commands.environment.safe_write_text", _raise)
     with pytest.raises(EnvironmentError, match="Could not write environment file"):
         add_environment(root, AddEnvironmentOptions())
+
+
+# --- Regression tests for bug fixes ---
+
+
+def test_project_name_with_non_dict_project_section(tmp_path: Path) -> None:
+    """A pyproject.toml where [project] is not a table must not crash _project_name."""
+    root = _make_project(tmp_path)
+    (root / "pyproject.toml").write_text(
+        '[tool.behave-gen]\nfeatures_dir = "features"\n\nproject = "not-a-dict"\n',
+        encoding="utf-8",
+    )
+    # Should fall back to the directory name, not raise AttributeError.
+    path = add_environment(root, AddEnvironmentOptions())
+    assert path.is_file()
+
+
+def test_find_unquoted_close_bracket_with_escaped_backslash() -> None:
+    """Escaped backslash before closing quote must not swallow the quote."""
+
+    # 'kit = ["foo\\"]'  -- the backslash is escaped, so the quote is real,
+    # and the ] after it is the close bracket.
+    line = 'kit = ["foo\\\\"]'
+    idx = _find_unquoted_close_bracket(line)
+    assert idx is not None
+    assert line[idx] == "]"
+
+
+def test_find_unquoted_close_bracket_with_single_quoted_backslash() -> None:
+    """Single-quoted strings treat backslash as literal, not as escape."""
+
+    # In TOML, 'foo\' is a literal string containing foo\ -- the backslash
+    # does NOT escape the closing quote.
+    line = "kit = ['foo\\']"
+    idx = _find_unquoted_close_bracket(line)
+    assert idx is not None
+    assert line[idx] == "]"
+
+
+def test_insert_into_inline_array_with_escaped_quote(tmp_path: Path) -> None:
+    """An inline array containing a string with an escaped quote must be handled correctly."""
+    root = _make_project(tmp_path)
+    # The existing dependency contains an escaped double-quote inside a double-quoted string.
+    (root / "pyproject.toml").write_text(
+        '[project]\nname = "proj"\n\n[project.optional-dependencies]\nkit = ["some\\"pkg>=1.0"]\n',
+        encoding="utf-8",
+    )
+    add_config(root, "behave-kit")
+    text = (root / "pyproject.toml").read_text(encoding="utf-8")
+    assert "behave-kit>=1.0" in text
+    assert 'some\\"pkg>=1.0' in text
+    with (root / "pyproject.toml").open("rb") as handle:
+        tomllib.load(handle)

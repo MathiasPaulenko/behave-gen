@@ -9,6 +9,8 @@ import pytest
 from typer.testing import CliRunner
 
 from behave_gen.cli.app import app
+from behave_gen.commands import steps as steps_mod
+from behave_gen.commands import update as update_mod
 from behave_gen.commands.init import InitOptions, init_project
 from behave_gen.commands.steps import AddStepsOptions, add_steps
 from behave_gen.commands.update import UpdateOptions, run_update
@@ -118,3 +120,49 @@ def test_update_with_kit_data(tmp_path: Path) -> None:
     content = (root / "environment.py").read_text(encoding="utf-8")
     assert "behave_kit" in content
     assert "behave_data" in content
+
+
+# --- Regression tests for bug fixes ---
+
+
+def test_update_step_libraries_preserves_file_on_failure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """When add_steps fails during update, the existing step file must be preserved."""
+    root = _make_project(tmp_path)
+    add_steps(root, AddStepsOptions(lib="http"))
+    steps_file = root / "features" / "steps" / "http_steps.py"
+    original = steps_file.read_text(encoding="utf-8")
+
+    def _raise(*args: object, **kwargs: object) -> None:
+        raise OSError("disk full")
+
+    monkeypatch.setattr("behave_gen.commands.steps.safe_write_text", _raise)
+    code = run_update(UpdateOptions(force=True), project_root=root)
+    assert code == 0
+    # The original file must still be intact.
+    assert steps_file.read_text(encoding="utf-8") == original
+
+
+def test_update_environment_preserves_file_on_failure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """When add_environment fails during update, the existing environment.py must be preserved."""
+    root = _make_project(tmp_path)
+    env_file = root / "environment.py"
+    original = env_file.read_text(encoding="utf-8")
+
+    def _raise(*args: object, **kwargs: object) -> None:
+        raise OSError("disk full")
+
+    monkeypatch.setattr("behave_gen.commands.environment.safe_write_text", _raise)
+    code = run_update(UpdateOptions(force=True), project_root=root)
+    assert code == 0
+    # The original file must still be intact.
+    assert env_file.read_text(encoding="utf-8") == original
+
+
+def test_update_uses_builtin_libraries_from_steps_module() -> None:
+    """update.py must import _BUILTIN_LIBRARIES from steps.py, not duplicate it."""
+    assert hasattr(update_mod, "_BUILTIN_LIBRARIES")
+    assert update_mod._BUILTIN_LIBRARIES is steps_mod._BUILTIN_LIBRARIES

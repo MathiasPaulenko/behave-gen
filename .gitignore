@@ -84,3 +84,4 @@ ref/
 /features/
 /environment.py
 /behave.toml
+AGENTS.md

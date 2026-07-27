@@ -404,7 +404,8 @@ def run(argv: Sequence[str] | None = None) -> int:
     try:
         result = app(args=list(argv) if argv is not None else None, standalone_mode=False)
     except typer.Exit as exc:
-        return int(getattr(exc, "code", 1))
+        code = getattr(exc, "exit_code", 1)
+        return 1 if code is None else int(code)
     except SystemExit as exc:  # pragma: no cover - defensive.
         return int(exc.code) if isinstance(exc.code, int) else 1
     except (OSError, RuntimeError) as exc:
