@@ -82,7 +82,8 @@ class Jinja2Engine:
         """Render ``source`` using the jinja2 environment with ``context``."""
         try:
             template = self.environment.from_string(source)
-            return template.render(**context)
+            result: str = template.render(**context)
+            return result
         except Exception as exc:  # noqa: BLE001 - jinja2 raises many subclasses.
             raise TemplateRenderError(
                 f"jinja2 render error: {exc}" + (f" in {filename}" if filename else "")

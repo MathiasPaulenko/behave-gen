@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import contextlib
 import os
-import sys
 import uuid
 from pathlib import Path
 
@@ -35,7 +34,7 @@ __all__ = [
 
 def is_windows_reserved_name(name: str) -> bool:
     """Return True when ``name`` (or its base before the first dot) is reserved on Windows."""
-    if sys.platform != "win32":
+    if os.name != "nt":
         return False
     base = name.split(".", 1)[0].upper()
     return base in _WIN_RESERVED_NAMES
