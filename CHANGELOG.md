@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.2] - 2026-07-27
+
+### Fixed
+
+- `http_steps.py.tpl`: merge duplicate `startswith` calls into a single tuple
+  call to satisfy ruff `PIE810` on generated step libraries.
+- `validate_name` in `paths.py`: absolute path detection now uses
+  platform-appropriate check so `C:\project` on Windows and `/project` on Linux
+  both raise the specific "absolute path" error instead of falling through to
+  the forbidden-characters check.
+- `test_diagnostics.py`: tests that require `behave-doctor` are now skipped
+  when the extra is not installed, instead of failing on CI.
+- `_build_config` in `config.py`: `isinstance` check for `[tool.behave-gen]`
+  now runs before the falsy check, so non-dict values (e.g. `0`, `false`)
+  raise `ValueError` instead of silently returning defaults.
+
 ## [1.1.1] - 2026-07-27
 
 ### Fixed

@@ -121,8 +121,6 @@ def test_config_rejects_non_string_default_tags() -> None:
 
 def test_load_config_non_dict_behave_gen_table_raises(tmp_path: Path) -> None:
     """A non-table value for [tool.behave-gen] must raise, not silently use defaults."""
-    (tmp_path / "pyproject.toml").write_text(
-        '[tool]\nbehave-gen = 0\n', encoding="utf-8"
-    )
+    (tmp_path / "pyproject.toml").write_text("[tool]\nbehave-gen = 0\n", encoding="utf-8")
     with pytest.raises(ValueError, match=r"must be a table"):
         load_config(tmp_path)

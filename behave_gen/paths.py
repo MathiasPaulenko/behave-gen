@@ -61,6 +61,7 @@ def validate_name(name: str) -> str:
         raise ValueError("Name cannot be an absolute path.")
 
     forbidden = {"\\", "/", ":", "*", "?", '"', "<", ">", "|", "$", "\x00"}
+
     if os.sep and os.sep not in forbidden:
         forbidden.add(os.sep)
     if os.altsep and os.altsep not in forbidden:

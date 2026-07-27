@@ -75,7 +75,7 @@ def _full_url(path: str, context: Any) -> str:
     Absolute URLs are accepted only when they use the ``http`` or ``https``
     scheme to avoid accidental misuse of other protocols.
     """
-    if path.startswith("http://") or path.startswith("https://"):
+    if path.startswith(("http://", "https://")):
         return path
     if "://" in path:
         parsed = urllib.parse.urlparse(path)

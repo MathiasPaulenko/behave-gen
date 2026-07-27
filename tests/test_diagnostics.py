@@ -2,10 +2,16 @@
 
 from __future__ import annotations
 
+import pytest
+
 from behave_gen.diagnostics import check_extra, install_hint, is_available
+
+_DOCTOR_AVAILABLE = is_available("doctor")
 
 
 def test_check_extra_known_installed_extra() -> None:
+    if not _DOCTOR_AVAILABLE:
+        pytest.skip("behave-doctor extra not installed")
     status = check_extra("doctor")
     assert status.name == "doctor"
     assert status.available is True
@@ -19,11 +25,15 @@ def test_check_extra_unknown_extra() -> None:
 
 
 def test_is_available_returns_bool() -> None:
+    if not _DOCTOR_AVAILABLE:
+        pytest.skip("behave-doctor extra not installed")
     assert is_available("doctor") is True
     assert is_available("nonexistent-extra") is False
 
 
 def test_install_hint_known_extra_is_empty() -> None:
+    if not _DOCTOR_AVAILABLE:
+        pytest.skip("behave-doctor extra not installed")
     assert install_hint("doctor") == ""
 
 

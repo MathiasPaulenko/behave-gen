@@ -37,8 +37,9 @@ def test_validate_name_rejects_path_separators() -> None:
 
 
 def test_validate_name_rejects_absolute_path() -> None:
+    abs_name = "C:\\project" if sys.platform == "win32" else "/project"
     with pytest.raises(ValueError, match="absolute"):
-        validate_name("C:\\project")
+        validate_name(abs_name)
 
 
 def test_validate_name_rejects_control_characters() -> None:

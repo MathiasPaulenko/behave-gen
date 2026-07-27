@@ -7,6 +7,6 @@ import importlib.metadata as _metadata
 try:
     __version__ = _metadata.version("behave-gen")
 except _metadata.PackageNotFoundError:  # pragma: no cover - fallback for source-only runs.
-    __version__ = "1.1.1"
+    __version__ = "1.1.2"
 
 __all__ = ["__version__"]
