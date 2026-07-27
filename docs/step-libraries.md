@@ -46,10 +46,10 @@ Feature: API
 
 ### Configuration
 
-Edit `BASE_URL` at the top of `http_steps.py` to change the default:
+Edit `DEFAULT_BASE_URL` at the top of `http_steps.py` to change the default:
 
 ```python
-BASE_URL = "http://localhost:8080"
+DEFAULT_BASE_URL = "http://localhost:8080"
 DEFAULT_TIMEOUT = 10
 ```
 
@@ -111,7 +111,7 @@ Feature: Login
       """
     Then the response status should be 200
     And the response JSON should contain "token"
-    When I store the value "<token>" as "session_token"
+    When I store the value "abc123" as "session_token"
     Then I should be authenticated
 ```
 

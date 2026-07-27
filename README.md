@@ -61,7 +61,8 @@ pip install behave-gen[all]
 | `doctor` | `behave-doctor` — static analysis for `check`/`doctor`. |
 | `lint` | `behave-lint` — Gherkin linting for `lint`. |
 | `format` | `behave-format` — Gherkin formatting for `format`. |
-| `openapi` | `pyyaml` — YAML parsing for `from-openapi`/`from-swagger`. |
+| `openapi` | `pyyaml` — YAML parsing for `from-openapi`. |
+| `swagger` | `pyyaml` — YAML parsing for `from-swagger`. |
 | `jinja2` | `jinja2` — alternative template engine. |
 | `kit` | `behave-kit` — environment hooks. |
 | `data` | `behave-data` — test data fixtures. |
@@ -123,7 +124,7 @@ See [`examples/README.md`](examples/README.md) for details.
 
 ## Architecture
 
-```
+```text
 behave_gen/
   cli/            Typer CLI application
   commands/       One module per CLI command
@@ -140,7 +141,7 @@ behave_gen/
   [Trusted Publishing](https://docs.pypi.org/trusted-publishers/) via GitHub
   Actions OIDC. No long-lived API tokens are stored in secrets.
 - **Pinned actions** — all GitHub Actions are pinned to specific versions
-  (e.g. `@v4`, `@v1.12.4`).
+  (e.g. `@v7`, `@v1.14.1`).
 - **Minimal dependencies** — only `behave`, `behave-model`, and `typer` at
   runtime. All other dependencies are optional extras.
 - **`py.typed` marker** — the package ships with inline type hints.
@@ -151,7 +152,7 @@ behave_gen/
 ```bash
 git clone https://github.com/MathiasPaulenko/behave-gen.git
 cd behave-gen
-pip install -e ".[dev]"
+pip install -e ".[dev,docs]"
 pre-commit install
 ```
 
@@ -166,6 +167,8 @@ pre-commit install
 | `make test` | Run the test suite. |
 | `make test-cov` | Run tests with coverage. |
 | `make build` | Build sdist + wheel into `ref/output/dist/`. |
+| `make docs` | Build documentation site. |
+| `make docs-serve` | Serve documentation locally. |
 | `make clean` | Remove build artifacts and caches. |
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for full guidelines.

@@ -15,8 +15,8 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
       - run: pip install behave-gen[doctor]
@@ -36,8 +36,8 @@ jobs:
   bdd:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
       - run: pip install behave-gen[all]
@@ -64,7 +64,7 @@ Use behave-gen as a pre-commit hook:
 ```yaml
 repos:
   - repo: https://github.com/MathiasPaulenko/behave-gen
-    rev: v1.0.0
+    rev: v1.1.3
     hooks:
       - id: behave-gen-check
         args: ["check"]

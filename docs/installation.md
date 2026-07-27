@@ -32,7 +32,8 @@ pip install behave-gen[all]
 | `doctor` | `behave-doctor` | `check`, `doctor` |
 | `lint` | `behave-lint` | `lint` |
 | `format` | `behave-format` | `format` |
-| `openapi` | `pyyaml` | `from-openapi`, `from-swagger` |
+| `openapi` | `pyyaml` | `from-openapi` |
+| `swagger` | `pyyaml` | `from-swagger` |
 | `jinja2` | `jinja2` | Custom templates with Jinja2 engine |
 | `kit` | `behave-kit` | `add environment --kit` |
 | `data` | `behave-data` | `add environment --data` |

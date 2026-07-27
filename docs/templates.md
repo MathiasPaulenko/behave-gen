@@ -103,10 +103,18 @@ ${tags}Feature: $feature_name
     Given a precondition for {{ feature_name }}
 ```
 
+!!! note "Tags include a trailing newline"
+
+    The `tags` variable already contains a trailing `\n` when tags are
+    present (e.g. `@smoke @auth\n`). This means `${tags}Feature:` renders
+    as two lines — tags on their own line, then `Feature:` on the next —
+    which is valid Gherkin. When no tags are provided, `tags` is empty and
+    the line collapses to just `Feature:`.
+
 ### Template variables
 
 | Variable | Description |
 | -------- | ----------- |
 | `feature_name` | Humanized feature name (e.g. `user_login` → `User login`). |
 | `name` | Raw feature name as passed on the CLI. |
-| `tags` | Tags line including trailing newline (e.g. `@smoke @auth\n`), or empty. |
+| `tags` | Tags line including trailing newline (e.g. `@smoke @auth\n`), or empty string when no tags are set. |

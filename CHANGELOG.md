@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.3] - 2026-07-27
+
+### Fixed
+
+- Documentation: added clarifying note in `templates.md` that the `tags` variable
+  includes a trailing newline, so `${tags}Feature:` renders as valid Gherkin.
+- Documentation: `configuration.md` incorrectly stated `--config` was "not active".
+- Documentation: `ci-cd.md` updated GitHub Actions versions (`@v7`) and pre-commit
+  rev (`v1.1.3`).
+- Documentation: `cli.md` was missing the `--path` option for `lint` and `format`.
+- Documentation: `step-libraries.md` fixed `BASE_URL` → `DEFAULT_BASE_URL` and
+  replaced misleading `<token>` placeholder.
+- Documentation: `architecture.md` added missing `variants.py` to the file listing.
+- Documentation: `installation.md` added missing `swagger` extra to the table.
+- README: separated `swagger` extra, updated pinned action versions, added `docs`
+  extra to dev install, added `make docs`/`make docs-serve` targets.
+
 ## [1.1.2] - 2026-07-27
 
 ### Fixed

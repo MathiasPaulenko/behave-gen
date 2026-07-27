@@ -38,6 +38,7 @@ behave_gen/
     engine.py       Template engine abstraction
     registry.py     Template registry
     discovery.py    Template discovery
+    variants.py     Template variant selection (kit/data wiring)
   config.py         [tool.behave-gen] configuration model
   project.py        Project detection and state
   diagnostics.py    Optional-dependency handling

@@ -318,12 +318,14 @@ behave-gen lint [OPTIONS]
 | Option | Default | Description |
 | ------ | ------- | ----------- |
 | `--fix` | `false` | Apply fixes where possible. |
+| `--path` | _features dir_ | Path to lint (repeatable); defaults to the features directory. |
 
 **Example:**
 
 ```bash
 behave-gen lint
 behave-gen lint --fix
+behave-gen lint --path features/auth.feature
 ```
 
 ---
@@ -341,12 +343,14 @@ behave-gen format [OPTIONS]
 | Option | Default | Description |
 | ------ | ------- | ----------- |
 | `--check` | `false` | Check formatting without writing. |
+| `--path` | _features dir_ | Path to format (repeatable); defaults to the features directory. |
 
 **Example:**
 
 ```bash
 behave-gen format
 behave-gen format --check
+behave-gen format --path features/auth.feature
 ```
 
 ---

@@ -92,9 +92,9 @@ With `jinja2` engine:
 
 ## CLI overrides
 
-CLI flags always override config file values. The `--config` global option is
-reserved for explicitly pointing to a `pyproject.toml`; it is currently not
-active and the project's `pyproject.toml` is used by default.
+CLI flags always override config file values. The `--config` global option
+points to an explicit `pyproject.toml` config file. When omitted, the
+`pyproject.toml` in the project root is used by default.
 
 ```bash
 behave-gen --config /path/to/pyproject.toml add feature login
