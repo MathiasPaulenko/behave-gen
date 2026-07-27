@@ -58,13 +58,28 @@ class Project:
         except (OSError, RuntimeError, ValueError) as exc:
             raise ProjectError(str(exc)) from exc
 
+        # Resolve config paths as absolute with .. normalization, but don't
+        # follow symlinks on the final component so a symlinked environment.py
+        # doesn't trigger a false "escapes project root" error.
+        def _abs(path: str, base: Path) -> Path:
+            p = Path(path)
+            if not p.is_absolute():
+                p = base / p
+            # Resolve parent to normalize .. but don't follow final-component symlinks.
+            return p.parent.resolve(strict=False) / p.name
+
+        features = _abs(resolved_config.features_dir, root_path)
+        steps = _abs(resolved_config.steps_dir, root_path)
+        env = _abs(resolved_config.environment_file, root_path)
+        templates = _abs(resolved_config.templates_dir, root_path)
+
         instance = cls(
             root=root_path,
-            features_dir=resolve_path(resolved_config.features_dir, root_path),
-            steps_dir=resolve_path(resolved_config.steps_dir, root_path),
-            environment_file=resolve_path(resolved_config.environment_file, root_path),
+            features_dir=features,
+            steps_dir=steps,
+            environment_file=env,
             config_file=root_path / "behave.toml",
-            templates_dir=resolve_path(resolved_config.templates_dir, root_path),
+            templates_dir=templates,
             config=resolved_config,
         )
         for attr in ("features_dir", "steps_dir", "environment_file", "templates_dir"):
