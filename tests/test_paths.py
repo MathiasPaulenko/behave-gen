@@ -3,11 +3,16 @@
 from __future__ import annotations
 
 import sys
-from pathlib import Path
+from pathlib import Path, PurePath
 
 import pytest
 
-from behave_gen.paths import is_windows_reserved_name, safe_write_text, validate_name
+from behave_gen.paths import (
+    is_windows_reserved_name,
+    safe_parse_feature_filename,
+    safe_write_text,
+    validate_name,
+)
 
 
 def test_validate_name_accepts_simple_name() -> None:
@@ -87,3 +92,23 @@ def test_is_windows_reserved_name_detects_reserved_names(monkeypatch: pytest.Mon
     assert is_windows_reserved_name("COM1")
     assert is_windows_reserved_name("COM1.tar.gz")
     assert not is_windows_reserved_name("my_feature")
+
+
+def test_safe_parse_feature_filename_returns_basename_for_absolute(tmp_path: Path) -> None:
+    """Absolute paths are reduced to their basename to avoid cross-drive errors."""
+    absolute = tmp_path / "login.feature"
+    result = safe_parse_feature_filename(absolute)
+    assert result == "login.feature"
+    assert not Path(result).is_absolute()
+
+
+def test_safe_parse_feature_filename_preserves_relative() -> None:
+    """Relative paths are returned as-is (platform-normalised)."""
+    result = safe_parse_feature_filename("features/login.feature")
+    assert PurePath(result) == PurePath("features/login.feature")
+
+
+def test_safe_parse_feature_filename_handles_windows_absolute() -> None:
+    """Windows drive-letter paths are reduced to basename."""
+    assert safe_parse_feature_filename("C:\\projects\\proj\\login.feature") == "login.feature"
+    assert safe_parse_feature_filename("D:/projects/proj/checkout.feature") == "checkout.feature"

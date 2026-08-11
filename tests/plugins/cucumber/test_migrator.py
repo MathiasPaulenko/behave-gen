@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 from behave_model import parse_feature
 
+from behave_gen.paths import safe_parse_feature_filename
 from behave_gen.plugins.cucumber.migrator import (
     MigrationError,
     migrate_cucumber,
@@ -47,7 +48,10 @@ def test_migrate_generated_features_parse(tmp_path: Path) -> None:
     out = tmp_path / "out"
     report = migrate_cucumber(FIXTURES, out)
     for feature_file in report.features:
-        parse_feature(feature_file.read_text(encoding="utf-8"), filename=str(feature_file))
+        parse_feature(
+            feature_file.read_text(encoding="utf-8"),
+            filename=safe_parse_feature_filename(feature_file),
+        )
 
 
 def test_migrate_missing_source_raises(tmp_path: Path) -> None:

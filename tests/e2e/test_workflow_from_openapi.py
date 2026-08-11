@@ -14,9 +14,10 @@ from behave_gen.commands.from_openapi import FromOpenApiOptions, run_from_openap
 from .conftest import parse_all_features, run_behave_dry_run, run_ruff_check
 
 
-def test_outside_project_root_fails(project: Path, openapi_yaml_spec: Path, tmp_path: Path) -> None:
+def test_outside_project_root_fails(project: Path, tmp_path: Path) -> None:
+    """Spec path outside project root must be rejected."""
     rc = run_from_openapi(
-        FromOpenApiOptions(spec=str(openapi_yaml_spec), out_dir=str(tmp_path)),
+        FromOpenApiOptions(spec=str(tmp_path / "nonexistent.yaml"), out_dir=str(tmp_path)),
         project_root=project,
     )
     assert rc == 1

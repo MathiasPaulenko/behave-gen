@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -13,6 +14,7 @@ from typer.testing import CliRunner
 from behave_gen.cli.app import app
 from behave_gen.commands.from_openapi import FromOpenApiOptions
 from behave_gen.generators.openapi import OpenApiGenerator
+from behave_gen.paths import safe_parse_feature_filename
 
 FIXTURES = Path(__file__).resolve().parent.parent / "fixtures" / "openapi"
 
@@ -105,12 +107,16 @@ def test_generator_generated_features_parse_with_behave_model(tmp_path: Path) ->
     out = tmp_path / "out"
     gen.generate(FIXTURES / "petstore.json", out)
     for feature_file in (out / "features").glob("*.feature"):
-        parse_feature(feature_file.read_text(encoding="utf-8"), filename=str(feature_file))
+        parse_feature(
+            feature_file.read_text(encoding="utf-8"),
+            filename=safe_parse_feature_filename(feature_file),
+        )
 
 
 def test_run_from_openapi_cli(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.chdir(tmp_path)
-    spec = FIXTURES / "petstore.json"
+    spec = tmp_path / "petstore.json"
+    shutil.copy2(FIXTURES / "petstore.json", spec)
     result = runner.invoke(app, ["from-openapi", str(spec), "--out-dir", "gen"])
     assert result.exit_code == 0, result.output
     assert (tmp_path / "gen" / "features" / "pets.feature").is_file()
@@ -118,7 +124,8 @@ def test_run_from_openapi_cli(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
 
 def test_run_from_openapi_default_out_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.chdir(tmp_path)
-    spec = FIXTURES / "petstore.json"
+    spec = tmp_path / "petstore.json"
+    shutil.copy2(FIXTURES / "petstore.json", spec)
     result = runner.invoke(app, ["from-openapi", str(spec)])
     assert result.exit_code == 0, result.output
     assert (tmp_path / "gen" / "features" / "pets.feature").is_file()
@@ -129,16 +136,17 @@ def test_run_from_openapi_rejects_unsupported_step_lib(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.chdir(tmp_path)
-    result = runner.invoke(
-        app, ["from-openapi", str(FIXTURES / "petstore.json"), "--step-lib", "auth"]
-    )
+    spec = tmp_path / "petstore.json"
+    shutil.copy2(FIXTURES / "petstore.json", spec)
+    result = runner.invoke(app, ["from-openapi", str(spec), "--step-lib", "auth"])
     assert result.exit_code == 1
     assert "Only the 'http' step library" in result.output
 
 
 def test_run_from_openapi_with_step_lib(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.chdir(tmp_path)
-    spec = FIXTURES / "petstore.json"
+    spec = tmp_path / "petstore.json"
+    shutil.copy2(FIXTURES / "petstore.json", spec)
     result = runner.invoke(
         app, ["from-openapi", str(spec), "--out-dir", "gen", "--step-lib", "http"]
     )
@@ -154,7 +162,9 @@ def test_run_from_openapi_missing_spec(tmp_path: Path, monkeypatch: pytest.Monke
 
 def test_run_from_openapi_invalid_spec(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.chdir(tmp_path)
-    result = runner.invoke(app, ["from-openapi", str(FIXTURES / "invalid.txt")])
+    spec = tmp_path / "invalid.txt"
+    shutil.copy2(FIXTURES / "invalid.txt", spec)
+    result = runner.invoke(app, ["from-openapi", str(spec)])
     assert result.exit_code == 1
 
 

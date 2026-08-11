@@ -14,11 +14,10 @@ from behave_gen.commands.from_swagger import FromSwaggerOptions, run_from_swagge
 from .conftest import parse_all_features, run_behave_dry_run, run_ruff_check
 
 
-def test_postman_outside_project_root_fails(
-    project: Path, postman_collection: Path, tmp_path: Path
-) -> None:
+def test_postman_outside_project_root_fails(project: Path, tmp_path: Path) -> None:
+    """Collection path outside project root must be rejected."""
     rc = run_from_postman(
-        FromPostmanOptions(collection=str(postman_collection), out_dir=str(tmp_path)),
+        FromPostmanOptions(collection=str(tmp_path / "nonexistent.json"), out_dir=str(tmp_path)),
         project_root=project,
     )
     assert rc == 1
@@ -70,11 +69,10 @@ class TestFromPostman:
         assert rc == 1
 
 
-def test_swagger_outside_project_root_fails(
-    project: Path, swagger2_spec: Path, tmp_path: Path
-) -> None:
+def test_swagger_outside_project_root_fails(project: Path, tmp_path: Path) -> None:
+    """Spec path outside project root must be rejected."""
     rc = run_from_swagger(
-        FromSwaggerOptions(spec=str(swagger2_spec), out_dir=str(tmp_path)),
+        FromSwaggerOptions(spec=str(tmp_path / "nonexistent.json"), out_dir=str(tmp_path)),
         project_root=project,
     )
     assert rc == 1

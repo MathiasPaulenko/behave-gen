@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -14,6 +15,7 @@ from behave_gen.commands.add import AddFeatureOptions, add_feature
 from behave_gen.commands.environment import AddEnvironmentOptions, add_environment
 from behave_gen.commands.init import InitOptions, init_project
 from behave_gen.commands.steps import AddStepsOptions, add_steps
+from behave_gen.paths import safe_parse_feature_filename
 
 
 @pytest.fixture
@@ -51,33 +53,43 @@ FIXTURES_DIR = Path(__file__).resolve().parent.parent / "fixtures"
 
 
 @pytest.fixture
-def openapi_yaml_spec() -> Path:
-    """Path to the Petstore OpenAPI 3.0 YAML fixture."""
-    return FIXTURES_DIR / "openapi" / "petstore.yaml"
+def openapi_yaml_spec(project: Path) -> Path:
+    """Path to the Petstore OpenAPI 3.0 YAML fixture (copied into project)."""
+    dest = project / "petstore.yaml"
+    shutil.copy2(FIXTURES_DIR / "openapi" / "petstore.yaml", dest)
+    return dest
 
 
 @pytest.fixture
-def openapi_json_spec() -> Path:
-    """Path to the Petstore OpenAPI 3.0 JSON fixture."""
-    return FIXTURES_DIR / "openapi" / "petstore.json"
+def openapi_json_spec(project: Path) -> Path:
+    """Path to the Petstore OpenAPI 3.0 JSON fixture (copied into project)."""
+    dest = project / "petstore.json"
+    shutil.copy2(FIXTURES_DIR / "openapi" / "petstore.json", dest)
+    return dest
 
 
 @pytest.fixture
-def swagger2_spec() -> Path:
-    """Path to the Swagger 2.0 JSON fixture."""
-    return FIXTURES_DIR / "swagger" / "petstore_swagger2.json"
+def swagger2_spec(project: Path) -> Path:
+    """Path to the Swagger 2.0 JSON fixture (copied into project)."""
+    dest = project / "petstore_swagger2.json"
+    shutil.copy2(FIXTURES_DIR / "swagger" / "petstore_swagger2.json", dest)
+    return dest
 
 
 @pytest.fixture
-def postman_collection() -> Path:
-    """Path to the Postman Collection v2.1 fixture."""
-    return FIXTURES_DIR / "postman" / "sample_collection.json"
+def postman_collection(project: Path) -> Path:
+    """Path to the Postman Collection v2.1 fixture (copied into project)."""
+    dest = project / "sample_collection.json"
+    shutil.copy2(FIXTURES_DIR / "postman" / "sample_collection.json", dest)
+    return dest
 
 
 @pytest.fixture
-def cucumber_project() -> Path:
-    """Path to the Cucumber (Java) fixture project."""
-    return FIXTURES_DIR / "cucumber"
+def cucumber_project(project: Path) -> Path:
+    """Path to a copy of the Cucumber (Java) fixture project inside the project root."""
+    dest = project / "cucumber_src"
+    shutil.copytree(FIXTURES_DIR / "cucumber", dest)
+    return dest
 
 
 def run_behave_dry_run(cwd: Path) -> subprocess.CompletedProcess[str]:
@@ -119,5 +131,5 @@ def parse_all_features(root: Path) -> list[Any]:
     features: list[Any] = []
     for path in sorted(root.rglob("*.feature")):
         text = path.read_text(encoding="utf-8")
-        features.append(_parse_feature(text, filename=str(path)))
+        features.append(_parse_feature(text, filename=safe_parse_feature_filename(path)))
     return features

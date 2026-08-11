@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 
 import pytest
@@ -10,6 +11,7 @@ from typer.testing import CliRunner
 
 from behave_gen.cli.app import app
 from behave_gen.generators.swagger import SwaggerGenerator
+from behave_gen.paths import safe_parse_feature_filename
 from behave_gen.plugins.swagger import SwaggerParseError, convert_swagger_to_openapi
 
 FIXTURES = Path(__file__).resolve().parent.parent / "fixtures" / "swagger"
@@ -37,9 +39,9 @@ def test_convert_swagger_openapi_file_raises() -> None:
 
 def test_run_from_swagger_cli(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.chdir(tmp_path)
-    result = runner.invoke(
-        app, ["from-swagger", str(FIXTURES / "petstore_swagger2.json"), "--out-dir", "gen"]
-    )
+    spec = tmp_path / "petstore_swagger2.json"
+    shutil.copy2(FIXTURES / "petstore_swagger2.json", spec)
+    result = runner.invoke(app, ["from-swagger", str(spec), "--out-dir", "gen"])
     assert result.exit_code == 0, result.output
     assert (tmp_path / "gen" / "features" / "pets.feature").is_file()
     assert (tmp_path / "gen" / "features" / "pets_petId.feature").is_file()
@@ -47,7 +49,9 @@ def test_run_from_swagger_cli(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
 
 def test_run_from_swagger_default_out_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.chdir(tmp_path)
-    result = runner.invoke(app, ["from-swagger", str(FIXTURES / "petstore_swagger2.json")])
+    spec = tmp_path / "petstore_swagger2.json"
+    shutil.copy2(FIXTURES / "petstore_swagger2.json", spec)
+    result = runner.invoke(app, ["from-swagger", str(spec)])
     assert result.exit_code == 0, result.output
     assert (tmp_path / "gen" / "features" / "pets.feature").is_file()
     assert not (tmp_path / "gen" / "features" / "features").exists()
@@ -57,20 +61,22 @@ def test_run_from_swagger_rejects_unsupported_step_lib(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.chdir(tmp_path)
-    result = runner.invoke(
-        app, ["from-swagger", str(FIXTURES / "petstore_swagger2.json"), "--step-lib", "auth"]
-    )
+    spec = tmp_path / "petstore_swagger2.json"
+    shutil.copy2(FIXTURES / "petstore_swagger2.json", spec)
+    result = runner.invoke(app, ["from-swagger", str(spec), "--step-lib", "auth"])
     assert result.exit_code == 1
     assert "Only the 'http' step library" in result.output
 
 
 def test_run_from_swagger_with_step_lib(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.chdir(tmp_path)
+    spec = tmp_path / "petstore_swagger2.json"
+    shutil.copy2(FIXTURES / "petstore_swagger2.json", spec)
     result = runner.invoke(
         app,
         [
             "from-swagger",
-            str(FIXTURES / "petstore_swagger2.json"),
+            str(spec),
             "--out-dir",
             "gen",
             "--step-lib",
@@ -93,11 +99,13 @@ def test_generator_step_lib_uses_project_name(tmp_path: Path) -> None:
 
 def test_run_from_swagger_with_tag(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.chdir(tmp_path)
+    spec = tmp_path / "petstore_swagger2.json"
+    shutil.copy2(FIXTURES / "petstore_swagger2.json", spec)
     result = runner.invoke(
         app,
         [
             "from-swagger",
-            str(FIXTURES / "petstore_swagger2.json"),
+            str(spec),
             "--out-dir",
             "gen",
             "--tag",
@@ -119,17 +127,22 @@ def test_run_from_swagger_openapi_file_fails(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.chdir(tmp_path)
-    result = runner.invoke(app, ["from-swagger", str(OPENAPI_FIXTURES / "petstore.json")])
+    spec = tmp_path / "petstore.json"
+    shutil.copy2(OPENAPI_FIXTURES / "petstore.json", spec)
+    result = runner.invoke(app, ["from-swagger", str(spec)])
     assert result.exit_code == 1
 
 
 def test_generated_swagger_features_parse(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.chdir(tmp_path)
-    runner.invoke(
-        app, ["from-swagger", str(FIXTURES / "petstore_swagger2.json"), "--out-dir", "gen"]
-    )
+    spec = tmp_path / "petstore_swagger2.json"
+    shutil.copy2(FIXTURES / "petstore_swagger2.json", spec)
+    runner.invoke(app, ["from-swagger", str(spec), "--out-dir", "gen"])
     for feature_file in (tmp_path / "gen" / "features").glob("*.feature"):
-        parse_feature(feature_file.read_text(encoding="utf-8"), filename=str(feature_file))
+        parse_feature(
+            feature_file.read_text(encoding="utf-8"),
+            filename=safe_parse_feature_filename(feature_file),
+        )
 
 
 def test_swagger_generator_can_handle() -> None:

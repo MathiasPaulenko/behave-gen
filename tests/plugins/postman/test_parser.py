@@ -125,3 +125,38 @@ def test_parse_collection_defaults_empty_method_to_get(tmp_path: Path) -> None:
     collection = parse_postman(path)
     methods = {r.method for r in collection.requests}
     assert methods == {"get"}
+
+
+def test_parse_null_collection_name_uses_default(tmp_path: Path) -> None:
+    """A collection with ``name: null`` should fall back to 'Postman Collection', not 'None'."""
+    path = tmp_path / "null_name.json"
+    path.write_text(
+        '{"info": {"name": null, "schema": "https://schema.getpostman.com/json/collection/v2.1.0/"},'
+        '"item": []}',
+        encoding="utf-8",
+    )
+    collection = parse_postman(path)
+    assert collection.name == "Postman Collection"
+
+
+def test_parse_null_schema_uses_empty_string(tmp_path: Path) -> None:
+    """A collection with ``schema: null`` should produce empty string, not 'None'."""
+    path = tmp_path / "null_schema.json"
+    path.write_text(
+        '{"info": {"name": "x", "schema": null}, "item": []}',
+        encoding="utf-8",
+    )
+    with pytest.raises(PostmanParseError, match="schema"):
+        parse_postman(path)
+
+
+def test_parse_null_item_name_uses_unnamed(tmp_path: Path) -> None:
+    """An item with ``name: null`` should fall back to 'Unnamed', not 'None'."""
+    path = tmp_path / "null_item_name.json"
+    path.write_text(
+        '{"info": {"name": "x", "schema": "https://schema.getpostman.com/json/collection/v2.1.0/"},'
+        '"item": [{"name": null, "request": {"method": "GET", "url": "https://example.com/a"}}]}',
+        encoding="utf-8",
+    )
+    collection = parse_postman(path)
+    assert collection.requests[0].name == "Unnamed"

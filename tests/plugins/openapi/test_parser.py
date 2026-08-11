@@ -106,3 +106,47 @@ def test_operation_tags_preserved() -> None:
     spec = parse_openapi(FIXTURES / "petstore.json")
     pets_get = next(op for op in spec.operations if op.path == "/pets" and op.method == "get")
     assert pets_get.tags == ("pets",)
+
+
+def test_parse_missing_title_uses_default(tmp_path: Path) -> None:
+    """A spec with no ``info.title`` should fall back to 'OpenAPI', not 'None'."""
+    path = tmp_path / "spec.json"
+    path.write_text(
+        '{"openapi": "3.0.0", "info": {"version": "1"}, "paths": {}}',
+        encoding="utf-8",
+    )
+    spec = parse_openapi(path)
+    assert spec.title == "OpenAPI"
+
+
+def test_parse_missing_version_uses_default(tmp_path: Path) -> None:
+    """A spec with no ``info.version`` should fall back to '0.0.0', not 'None'."""
+    path = tmp_path / "spec.json"
+    path.write_text(
+        '{"openapi": "3.0.0", "info": {"title": "My API"}, "paths": {}}',
+        encoding="utf-8",
+    )
+    spec = parse_openapi(path)
+    assert spec.version == "0.0.0"
+
+
+def test_parse_null_title_uses_default(tmp_path: Path) -> None:
+    """A spec with ``title: null`` should fall back to 'OpenAPI', not 'None'."""
+    path = tmp_path / "spec.json"
+    path.write_text(
+        '{"openapi": "3.0.0", "info": {"title": null, "version": "1"}, "paths": {}}',
+        encoding="utf-8",
+    )
+    spec = parse_openapi(path)
+    assert spec.title == "OpenAPI"
+
+
+def test_parse_null_version_uses_default(tmp_path: Path) -> None:
+    """A spec with ``version: null`` should fall back to '0.0.0', not 'None'."""
+    path = tmp_path / "spec.json"
+    path.write_text(
+        '{"openapi": "3.0.0", "info": {"title": "My API", "version": null}, "paths": {}}',
+        encoding="utf-8",
+    )
+    spec = parse_openapi(path)
+    assert spec.version == "0.0.0"

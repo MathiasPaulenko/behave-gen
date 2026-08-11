@@ -38,23 +38,37 @@ def test_from_swagger_accepts_relative_spec_inside_project_root(tmp_path: Path) 
     assert (root / "gen" / "features").is_dir()
 
 
-def test_from_swagger_accepts_absolute_spec(tmp_path: Path) -> None:
+def test_from_swagger_accepts_absolute_spec_inside_root(tmp_path: Path) -> None:
+    root = _make_project(tmp_path)
+    spec = _FIXTURES / "petstore_swagger2.json"
+    dest = root / "petstore_swagger2.json"
+    shutil.copy(spec, dest)
+    rc = run_from_swagger(
+        FromSwaggerOptions(spec=str(dest), out_dir="gen"),
+        project_root=root,
+    )
+    assert rc == 0
+
+
+def test_from_swagger_rejects_absolute_spec_outside_root(tmp_path: Path) -> None:
     root = _make_project(tmp_path)
     spec = _FIXTURES / "petstore_swagger2.json"
     rc = run_from_swagger(
         FromSwaggerOptions(spec=str(spec), out_dir="gen"),
         project_root=root,
     )
-    assert rc == 0
+    assert rc == 1
 
 
 def test_from_swagger_resolves_absolute_out_dir_with_dotdot(tmp_path: Path) -> None:
     """An absolute out_dir with parent-directory components must be normalized."""
     root = _make_project(tmp_path)
     spec = _FIXTURES / "petstore_swagger2.json"
+    dest = root / "petstore_swagger2.json"
+    shutil.copy(spec, dest)
     out_dir = str(root / "gen" / ".." / "gen")
     rc = run_from_swagger(
-        FromSwaggerOptions(spec=str(spec), out_dir=out_dir),
+        FromSwaggerOptions(spec=str(dest), out_dir=out_dir),
         project_root=root,
     )
     assert rc == 0

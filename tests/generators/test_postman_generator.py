@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 
 import pytest
@@ -10,6 +11,7 @@ from typer.testing import CliRunner
 
 from behave_gen.cli.app import app
 from behave_gen.generators.postman import PostmanGenerator
+from behave_gen.paths import safe_parse_feature_filename
 
 FIXTURES = Path(__file__).resolve().parent.parent / "fixtures" / "postman"
 
@@ -72,21 +74,26 @@ def test_generator_generated_features_parse(tmp_path: Path) -> None:
     out = tmp_path / "out"
     gen.generate(FIXTURES / "sample_collection.json", out)
     for feature_file in (out / "features").glob("*.feature"):
-        parse_feature(feature_file.read_text(encoding="utf-8"), filename=str(feature_file))
+        parse_feature(
+            feature_file.read_text(encoding="utf-8"),
+            filename=safe_parse_feature_filename(feature_file),
+        )
 
 
 def test_run_from_postman_cli(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.chdir(tmp_path)
-    result = runner.invoke(
-        app, ["from-postman", str(FIXTURES / "sample_collection.json"), "--out-dir", "gen"]
-    )
+    collection = tmp_path / "sample_collection.json"
+    shutil.copy2(FIXTURES / "sample_collection.json", collection)
+    result = runner.invoke(app, ["from-postman", str(collection), "--out-dir", "gen"])
     assert result.exit_code == 0, result.output
     assert (tmp_path / "gen" / "features" / "Auth.feature").is_file()
 
 
 def test_run_from_postman_default_out_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.chdir(tmp_path)
-    result = runner.invoke(app, ["from-postman", str(FIXTURES / "sample_collection.json")])
+    collection = tmp_path / "sample_collection.json"
+    shutil.copy2(FIXTURES / "sample_collection.json", collection)
+    result = runner.invoke(app, ["from-postman", str(collection)])
     assert result.exit_code == 0, result.output
     assert (tmp_path / "gen" / "features" / "Auth.feature").is_file()
     assert not (tmp_path / "gen" / "features" / "features").exists()
@@ -96,20 +103,22 @@ def test_run_from_postman_rejects_unsupported_step_lib(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.chdir(tmp_path)
-    result = runner.invoke(
-        app, ["from-postman", str(FIXTURES / "sample_collection.json"), "--step-lib", "auth"]
-    )
+    collection = tmp_path / "sample_collection.json"
+    shutil.copy2(FIXTURES / "sample_collection.json", collection)
+    result = runner.invoke(app, ["from-postman", str(collection), "--step-lib", "auth"])
     assert result.exit_code == 1
     assert "Only the 'http' step library" in result.output
 
 
 def test_run_from_postman_with_step_lib(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.chdir(tmp_path)
+    collection = tmp_path / "sample_collection.json"
+    shutil.copy2(FIXTURES / "sample_collection.json", collection)
     result = runner.invoke(
         app,
         [
             "from-postman",
-            str(FIXTURES / "sample_collection.json"),
+            str(collection),
             "--out-dir",
             "gen",
             "--step-lib",
@@ -130,5 +139,7 @@ def test_run_from_postman_invalid_collection(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.chdir(tmp_path)
-    result = runner.invoke(app, ["from-postman", str(FIXTURES / "invalid.json")])
+    collection = tmp_path / "invalid.json"
+    shutil.copy2(FIXTURES / "invalid.json", collection)
+    result = runner.invoke(app, ["from-postman", str(collection)])
     assert result.exit_code == 1

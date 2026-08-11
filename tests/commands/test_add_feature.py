@@ -14,6 +14,7 @@ from typer.testing import CliRunner
 from behave_gen.cli.app import app
 from behave_gen.commands.add import AddError, AddFeatureOptions, add_feature
 from behave_gen.commands.init import InitOptions, init_project
+from behave_gen.paths import safe_parse_feature_filename
 
 runner = CliRunner()
 
@@ -42,7 +43,9 @@ def test_add_feature_humanizes_multi_word_slug(tmp_path: Path) -> None:
 def test_add_feature_parses_with_behave_model(tmp_path: Path) -> None:
     root = _make_project(tmp_path)
     path = add_feature(root, AddFeatureOptions(name="checkout"))
-    feature = parse_feature(path.read_text(encoding="utf-8"), filename=str(path))
+    feature = parse_feature(
+        path.read_text(encoding="utf-8"), filename=safe_parse_feature_filename(path)
+    )
     assert feature.name == "Checkout"
 
 
