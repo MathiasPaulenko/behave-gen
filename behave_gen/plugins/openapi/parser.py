@@ -87,7 +87,10 @@ def _load_document(source: Path) -> dict[str, Any]:
             try:
                 import yaml  # noqa: PLC0415 - optional extra.
             except ImportError as exc:
-                raise OpenApiParseError("YAML support requires the 'openapi' extra.") from exc
+                raise OpenApiParseError(
+                    "YAML support requires the 'openapi' extra. "
+                    "Install it with: pip install behave-gen[openapi]"
+                ) from exc
             try:
                 loaded = yaml.safe_load(text)
             except Exception as yaml_exc:  # noqa: BLE001 - yaml can raise many exceptions.
@@ -178,8 +181,8 @@ def parse_openapi(source: str | Path) -> OpenApiSpec:
             )
 
     return OpenApiSpec(
-        title=str(info.get("title", "OpenAPI")),
-        version=str(info.get("version", "0.0.0")),
+        title=str(info.get("title") or "OpenAPI"),
+        version=str(info.get("version") or "0.0.0"),
         openapi_version=openapi_version,
         operations=tuple(operations),
     )

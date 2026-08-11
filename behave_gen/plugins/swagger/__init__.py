@@ -52,7 +52,9 @@ def _load_swagger(source: Path) -> dict[str, Any]:
         try:
             import yaml  # noqa: PLC0415 - optional extra.
         except ImportError as exc:
-            raise SwaggerParseError("YAML support requires the 'openapi' extra.") from exc
+            raise SwaggerParseError(
+                "YAML support requires pyyaml. Install with: pip install behave-gen[swagger]"
+            ) from exc
         try:
             loaded = yaml.safe_load(text)
         except Exception as exc:  # noqa: BLE001 - yaml can raise many exception types.
@@ -69,7 +71,9 @@ def _load_swagger(source: Path) -> dict[str, Any]:
             try:
                 import yaml  # noqa: PLC0415 - optional extra.
             except ImportError as exc:
-                raise SwaggerParseError("YAML support requires the 'openapi' extra.") from exc
+                raise SwaggerParseError(
+                    "YAML support requires pyyaml. Install with: pip install behave-gen[swagger]"
+                ) from exc
             try:
                 loaded = yaml.safe_load(text)
             except Exception as yaml_exc:  # noqa: BLE001

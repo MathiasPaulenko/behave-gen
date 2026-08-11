@@ -96,7 +96,7 @@ def _extract_requests(items: list[Any], parent_folder: str = "") -> list[Postman
     for item in items:
         if not isinstance(item, dict):
             continue
-        name = str(item.get("name", "Unnamed"))
+        name = str(item.get("name") or "Unnamed")
         if "item" in item and isinstance(item["item"], list):
             folder = name if not parent_folder else f"{parent_folder}/{name}"
             requests.extend(_extract_requests(item["item"], folder))
@@ -154,7 +154,7 @@ def parse_postman(source: str | Path) -> PostmanCollection:
     if not isinstance(info, dict):
         raise PostmanParseError("'info' must be a mapping.")
 
-    schema = str(info.get("schema", ""))
+    schema = str(info.get("schema") or "")
     if "v2.1" not in schema and "v2.0" not in schema:
         raise PostmanParseError(
             f"Unsupported Postman schema {schema!r}. Only v2.0/v2.1 are supported."
@@ -166,7 +166,7 @@ def parse_postman(source: str | Path) -> PostmanCollection:
 
     requests = _extract_requests(items)
     return PostmanCollection(
-        name=str(info.get("name", "Postman Collection")),
+        name=str(info.get("name") or "Postman Collection"),
         schema=schema,
         requests=tuple(requests),
     )
