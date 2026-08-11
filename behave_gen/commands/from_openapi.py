@@ -44,13 +44,14 @@ def run_from_openapi(
 
     spec_path = Path(options.spec)
     if not spec_path.is_absolute():
-        spec_path = (project.root / spec_path).resolve()
-        if not spec_path.is_relative_to(project.root):
-            print(
-                f"from-openapi: Spec path must be inside project root: {spec_path}",
-                file=sys.stderr,
-            )
-            return 1
+        spec_path = project.root / spec_path
+    spec_path = spec_path.resolve()
+    if not spec_path.is_relative_to(project.root):
+        print(
+            f"from-openapi: Spec path must be inside project root: {spec_path}",
+            file=sys.stderr,
+        )
+        return 1
 
     out_dir = Path(options.out_dir)
     if not out_dir.is_absolute():

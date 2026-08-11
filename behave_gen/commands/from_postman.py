@@ -39,13 +39,14 @@ def run_from_postman(
 
     collection_path = Path(options.collection)
     if not collection_path.is_absolute():
-        collection_path = (project.root / collection_path).resolve()
-        if not collection_path.is_relative_to(project.root):
-            print(
-                f"from-postman: Collection path must be inside project root: {collection_path}",
-                file=sys.stderr,
-            )
-            return 1
+        collection_path = project.root / collection_path
+    collection_path = collection_path.resolve()
+    if not collection_path.is_relative_to(project.root):
+        print(
+            f"from-postman: Collection path must be inside project root: {collection_path}",
+            file=sys.stderr,
+        )
+        return 1
 
     out_dir = Path(options.out_dir)
     if not out_dir.is_absolute():
