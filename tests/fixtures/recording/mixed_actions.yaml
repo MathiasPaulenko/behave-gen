@@ -1,0 +1,5 @@
+actions:
+  - type: hover
+    selector: "button#menu"
+  - type: navigate
+    url: https://example.com

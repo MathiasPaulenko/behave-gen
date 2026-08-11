@@ -1,0 +1,16 @@
+actions:
+  - type: navigate
+    url: https://example.com
+  - type: click
+    selector: "button#login"
+    text: "Login"
+  - type: type
+    selector: "input#username"
+    value: "admin"
+  - type: type
+    selector: "input#password"
+    value: "secret"
+  - type: click
+    selector: "button[type='submit']"
+  - type: scroll
+    y: 500

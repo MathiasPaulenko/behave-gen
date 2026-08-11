@@ -146,14 +146,19 @@ def add_feature_cmd(
 
 @add_app.command("steps")
 def add_steps_cmd(
-    lib: Annotated[str, typer.Option] = typer.Option(
-        ..., "--lib", help="Step library name (e.g. http, auth)."
+    lib: Annotated[str | None, typer.Option] = typer.Option(
+        None, "--lib", help="Step library name (e.g. http, auth)."
+    ),
+    from_recording: Annotated[str | None, typer.Option] = typer.Option(
+        None,
+        "--from-recording",
+        help="Path to a wavexis recording YAML file to generate steps from.",
     ),
 ) -> None:
-    """Add real step definitions from a step library."""
+    """Add real step definitions from a step library or a wavexis recording."""
     from behave_gen.commands.steps import AddStepsOptions, run_add_steps
 
-    options = AddStepsOptions(lib=lib)
+    options = AddStepsOptions(lib=lib, from_recording=from_recording)
     code = run_add_steps(options, project_root=state.project, config=state.config_obj)
     raise typer.Exit(code=code)
 

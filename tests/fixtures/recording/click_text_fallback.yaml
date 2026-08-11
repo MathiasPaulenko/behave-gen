@@ -1,0 +1,7 @@
+actions:
+  - type: navigate
+    url: https://example.com
+  - type: click
+    text: "Login"
+  - type: click
+    selector: "button#submit"
