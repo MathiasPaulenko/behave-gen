@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-08-11
+
+### Added
+
+- `add steps --from-recording`: generate concrete step definitions and a
+  feature file from a wavexis recording YAML. Supported action types:
+  `navigate`, `click` (by selector or text), `type`, and `scroll`. Steps
+  are deduplicated against existing project definitions. Can be combined
+  with `--lib` to add a library first, then dedup recording-derived steps.
+
 ### Fixed
 
 - `plugins/openapi/parser.py`: `None` or missing `info.title` / `info.version` fields
@@ -23,6 +33,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   project-root containment, matching the security pattern already used in
   `from-openapi` and `from-postman`. Previously, absolute paths bypassed the
   containment check entirely.
+- `plugins/swagger/__init__.py`: YAML import error now points to the correct
+  `swagger` extra instead of the `openapi` extra.
+- `paths.py`: added `safe_parse_feature_filename` to avoid `ValueError` on
+  Windows when `behave_model.parse_feature` receives a path on a different
+  drive than the current working directory. Used in `add`, `preview`, and
+  `stats` commands.
 
 ### Changed
 
