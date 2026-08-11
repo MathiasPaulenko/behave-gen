@@ -27,6 +27,7 @@ __all__ = [
     "relative_to",
     "resolve_path",
     "resolve_project_root",
+    "safe_parse_feature_filename",
     "safe_write_text",
     "validate_name",
 ]
@@ -138,3 +139,17 @@ def safe_write_text(path: str | Path, content: str) -> None:
     finally:
         with contextlib.suppress(OSError):
             tmp.unlink(missing_ok=True)
+
+
+def safe_parse_feature_filename(path: str | Path) -> str:
+    """Return a filename safe for ``behave_model.parse_feature``.
+
+    ``behave`` internally calls ``os.path.relpath(filename, os.getcwd())`` which
+    raises ``ValueError`` on Windows when the file and cwd are on different
+    drives.  This function returns just the basename when an absolute path is
+    given, avoiding the cross-drive issue entirely.
+    """
+    p = Path(path)
+    if p.is_absolute():
+        return p.name
+    return str(p)

@@ -16,7 +16,12 @@ from pathlib import Path
 from behave_model import ParseError, parse_feature
 
 from behave_gen.config import BehaveGenConfig
-from behave_gen.paths import resolve_project_root, safe_write_text, validate_name
+from behave_gen.paths import (
+    resolve_project_root,
+    safe_parse_feature_filename,
+    safe_write_text,
+    validate_name,
+)
 from behave_gen.project import Project, ProjectError
 
 _FEATURE_TEMPLATE_ROOT = "behave_gen.templates.features"
@@ -140,7 +145,7 @@ def add_feature(
 
     # Validate the generated feature parses cleanly with behave-model.
     try:
-        parse_feature(rendered, filename=str(target))
+        parse_feature(rendered, filename=safe_parse_feature_filename(target))
     except ParseError as exc:
         raise AddError(f"Generated feature failed to parse: {exc}") from exc
 

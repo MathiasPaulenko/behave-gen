@@ -16,7 +16,7 @@ from typing import Any
 from behave_model import ParseError, parse_feature
 
 from behave_gen.config import BehaveGenConfig
-from behave_gen.paths import resolve_project_root
+from behave_gen.paths import resolve_project_root, safe_parse_feature_filename
 from behave_gen.project import Project, ProjectError
 
 
@@ -91,7 +91,7 @@ def _collect_stats(project: Project) -> StatsReport:  # noqa: PLR0912 - stats ag
             continue
         try:
             text = resolved.read_text(encoding="utf-8")
-            feature = parse_feature(text, filename=str(resolved))
+            feature = parse_feature(text, filename=safe_parse_feature_filename(resolved))
         except ParseError as exc:
             warnings.append(f"Parse error in {feature_file.name}: {exc}")
             continue

@@ -13,7 +13,7 @@ from typing import Any
 from behave_model import ParseError, parse_feature
 
 from behave_gen.config import BehaveGenConfig
-from behave_gen.paths import resolve_project_root
+from behave_gen.paths import resolve_project_root, safe_parse_feature_filename
 from behave_gen.project import Project, ProjectError
 
 
@@ -169,7 +169,7 @@ def run_preview(
         print(f"preview: Could not {kind} {path}: {exc}", file=sys.stderr)
         return 1
     try:
-        feature = parse_feature(text, filename=str(path))
+        feature = parse_feature(text, filename=safe_parse_feature_filename(path))
     except ParseError as exc:
         print(f"preview: Parse error: {exc}", file=sys.stderr)
         return 1
