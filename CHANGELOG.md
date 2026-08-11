@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `plugins/openapi/parser.py`: `None` or missing `info.title` / `info.version` fields
+  now fall back to defaults ("OpenAPI", "0.0.0") instead of producing the string
+  `"None"`.
+- `plugins/postman/parser.py`: `None` or missing `info.name`, `info.schema`, and
+  item `name` fields now fall back to defaults instead of producing the string
+  `"None"`.
+- `recording.py`: scroll action `x` and `y` coordinates are now validated and
+  coerced to integers at parse time via `_coerce_int`, rejecting `bool` and
+  non-numeric types early instead of causing runtime errors in downstream
+  Gherkin/step generation.
+- `commands/migrate.py`: absolute source paths are now resolved and checked for
+  project-root containment, matching the security pattern already used in
+  `from-openapi` and `from-postman`. Previously, absolute paths bypassed the
+  containment check entirely.
+
+### Changed
+
+- `docs/cli.md`: documented the `--from-recording` option for `add steps`.
+- `docs/architecture.md`: added missing files (`recording.py`, `from_swagger.py`,
+  `swagger.py` generator, `paths.py`) to the package structure listing.
+- `docs/generators.md`: `from-swagger` now documents YAML support in addition to
+  JSON.
+- `docs/migration.md`: added note that source and output paths must be inside
+  the project root.
+- README: updated architecture listing to include `recording.py`, `paths.py`,
+  `config.py`, and `project.py`.
+
 ## [1.1.3] - 2026-07-27
 
 ### Fixed

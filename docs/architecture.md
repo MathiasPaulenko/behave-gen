@@ -9,7 +9,7 @@ behave_gen/
   commands/         One module per CLI command
     init.py         Project scaffolding
     add.py          add feature
-    steps.py        add steps
+    steps.py        add steps (libraries + wavexis recordings)
     environment.py  add environment, add config
     check.py        check / doctor
     lint.py         lint
@@ -22,8 +22,10 @@ behave_gen/
     stats.py        stats
     update.py       update
   generators/       Pluggable code generators
+    base.py         Generator protocol and result types
     openapi.py      OpenAPI generator
     postman.py      Postman generator
+    swagger.py      Swagger generator (delegates to OpenAPI)
   plugins/          Source-specific parsers and builders
     openapi/        OpenAPI parser, feature builder, step builder
     postman/        Postman parser, feature builder
@@ -40,8 +42,10 @@ behave_gen/
     discovery.py    Template discovery
     variants.py     Template variant selection (kit/data wiring)
   config.py         [tool.behave-gen] configuration model
+  paths.py          Path resolution and validation helpers
   project.py        Project detection and state
   diagnostics.py    Optional-dependency handling
+  recording.py      Wavexis recording parser and step generator
 ```
 
 ## Design decisions

@@ -112,7 +112,7 @@ behave-gen from-swagger swagger.json --out-dir gen --step-lib http --tag api
 ### How it works
 
 1. **Convert** — The Swagger 2.0 spec is converted to OpenAPI 3.x in memory.
-   Paths, operations, parameters, and responses are mapped.
+   Requires the `swagger` extra for YAML files.
 2. **Build features** — Same as `from-openapi`.
 3. **Build steps** — Same as `from-openapi`.
 
@@ -120,7 +120,7 @@ behave-gen from-swagger swagger.json --out-dir gen --step-lib http --tag api
 
 | Option | Description |
 | ------ | ----------- |
-| `SPEC` | Path to a Swagger 2.0 spec (JSON). |
+| `SPEC` | Path to a Swagger 2.0 spec (JSON or YAML). |
 | `--out-dir` | Output directory for the generated project (default: `gen`). |
 | `--step-lib` | Step library to bind (e.g. `http`). |
 | `--tag` | Tag applied to all generated scenarios. |

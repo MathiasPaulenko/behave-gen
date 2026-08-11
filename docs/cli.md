@@ -75,7 +75,8 @@ See [Feature Templates](templates.md).
 
 ## add steps
 
-Add real step definitions from a step library.
+Add real step definitions from a step library or generate them from a wavexis
+recording.
 
 ```bash
 behave-gen add steps [OPTIONS]
@@ -85,16 +86,46 @@ behave-gen add steps [OPTIONS]
 
 | Option | Default | Description |
 | ------ | ------- | ----------- |
-| `--lib` | _required_ | Step library name: `http` or `auth`. |
+| `--lib` | _none_ | Step library name: `http` or `auth`. |
+| `--from-recording` | _none_ | Path to a wavexis recording YAML file. Generates step definitions and a feature file from recorded browser actions. |
 
-**Example:**
+At least one of `--lib` or `--from-recording` must be provided. They can be
+combined: the library is added first, then recording-derived steps are
+deduplicated against it.
+
+**Examples:**
 
 ```bash
+# Add a built-in step library
 behave-gen add steps --lib http
 behave-gen add steps --lib auth
+
+# Generate steps from a wavexis recording
+behave-gen add steps --from-recording recording.yaml
+
+# Combine library + recording (library first, then dedup)
+behave-gen add steps --lib http --from-recording recording.yaml
 ```
 
-See [Step Libraries](step-libraries.md).
+See [Step Libraries](step-libraries.md) for the built-in libraries and
+[Generating steps from a recording](#generating-steps-from-a-recording) below.
+
+### Generating steps from a recording
+
+Use [`wavexis`](https://github.com/lvckaa/wavexis) to record browser
+interactions, then generate Behave step definitions and a feature file from
+the recording.
+
+This produces:
+
+- `features/steps/recorded_steps.py` — Python step definitions with real
+  browser actions via `context.page` (Playwright/wavexis page object).
+- `features/recorded.feature` — a Gherkin feature file representing the
+  recorded flow.
+
+Supported action types: `navigate`, `click` (by selector or text), `type`,
+and `scroll`. Unsupported actions are silently skipped. Steps are
+deduplicated against existing step definitions in the project.
 
 ---
 
@@ -222,7 +253,7 @@ behave-gen from-swagger [OPTIONS] SPEC
 
 | Argument | Description |
 | -------- | ----------- |
-| `SPEC` | Path to a Swagger 2.0 spec (JSON). |
+| `SPEC` | Path to a Swagger 2.0 spec (JSON or YAML). |
 
 **Options:**
 

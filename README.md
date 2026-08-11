@@ -21,7 +21,7 @@ behave-format), and migrates Cucumber projects to Behave.
 | ------- | ----------- |
 | `init` | Scaffold a new Behave project with sensible defaults. |
 | `add feature` | Generate `.feature` files from templates (default, CRUD). |
-| `add steps` | Add real, runnable step libraries (HTTP, auth). No empty skeletons. |
+| `add steps` | Add real, runnable step libraries (HTTP, auth) or generate steps from a wavexis recording (`--from-recording`). No empty skeletons. |
 | `add environment` | Rewrite `environment.py` with behave-kit/behave-data wiring. |
 | `add config` | Add ecosystem packages to `pyproject.toml` idempotently. |
 | `check` | Run behave-doctor diagnostics with actionable suggestions. |
@@ -81,6 +81,12 @@ behave-gen add feature login
 # Add HTTP step definitions
 behave-gen add steps --lib http
 
+# Generate steps from a wavexis recording
+behave-gen add steps --from-recording recording.yaml
+
+# Combine a step library with a recording (library first, then dedup)
+behave-gen add steps --lib http --from-recording recording.yaml
+
 # Check project health
 behave-gen check
 
@@ -97,6 +103,32 @@ behave-gen from-openapi spec.yaml --out-dir gen --step-lib http --tag api
 This produces `.feature` files grouped by path, each with scenarios that use
 the HTTP step library syntax. The `--step-lib http` flag also generates a
 concrete, runnable `http_steps.py` module.
+
+## Generating steps from a wavexis recording
+
+Use [`wavexis`](https://github.com/lvckaa/wavexis) to record browser
+interactions, then generate Behave step definitions and a feature file from
+the recording:
+
+```bash
+# Record a flow with wavexis (produces recording.yaml)
+# Then generate steps and a feature file:
+behave-gen add steps --from-recording recording.yaml
+```
+
+This produces:
+
+- `features/steps/recorded_steps.py` — Python step definitions with real
+  browser actions via `context.page` (Playwright/wavexis page object).
+- `features/recorded.feature` — a Gherkin feature file representing the
+  recorded flow.
+
+Supported action types: `navigate`, `click` (by selector or text), `type`,
+and `scroll`. Unsupported actions are silently skipped. Steps are
+deduplicated against existing step definitions in the project.
+
+You can combine `--from-recording` with `--lib` to add a step library first,
+then generate recording-derived steps deduplicated against it.
 
 ## Migrating from Cucumber
 
@@ -128,11 +160,15 @@ See [`examples/README.md`](examples/README.md) for details.
 behave_gen/
   cli/            Typer CLI application
   commands/       One module per CLI command
-  generators/     Pluggable code generators (OpenAPI, Postman)
+  generators/     Pluggable code generators (OpenAPI, Postman, Swagger)
   plugins/        Source-specific parsers and builders
   step_libraries/ Built-in step library templates (HTTP, auth)
   templates/      Project and feature templates
+  config.py       [tool.behave-gen] configuration model
   diagnostics.py  Optional-dependency handling
+  paths.py        Path resolution and validation helpers
+  project.py      Project detection and state
+  recording.py    Wavexis recording parser and step generator
 ```
 
 ## Supply chain & trust

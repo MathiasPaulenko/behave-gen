@@ -9,6 +9,10 @@ layout by copying `.feature` files and emitting a migration report.
 behave-gen migrate path/to/cucumber-project --out-dir migrated
 ```
 
+Both the source directory and the output directory must be inside the project
+root. This is a security measure to prevent path traversal outside the project
+boundary.
+
 ### What it does
 
 1. **Scans** the source directory for `.feature` files (typically under
