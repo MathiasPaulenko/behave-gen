@@ -7,6 +7,84 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-10-02
+
+### Added
+
+- `add feature --template NAME` now looks up `templates_dir/NAME.feature`
+  before the built-in templates, so project-level custom feature templates
+  actually work.
+- `init --template` accepts a path to a directory containing a custom project
+  template set.
+- `init` honours the `template_engine` value from `[tool.behave-gen]` when
+  `--template-engine` is not passed (via `--config` or the target directory's
+  `pyproject.toml`).
+- `.pre-commit-hooks.yaml` so the repo can be used as a pre-commit hook
+  (`behave-gen-check`), as documented in `docs/ci-cd.md`.
+
+### Fixed
+
+- Generated `sample.feature` is now a runnable scenario with matching
+  `features/steps/sample_steps.py`, so a fresh `init` project passes
+  `behave`, `behave-gen lint` and `behave-gen format --check` out of the box
+  (previously behave-lint reported BC002 for the scenario-less placeholder).
+- `behave-gen migrate` no longer strips `# language: xx` directives: Behave
+  supports them natively, and removing them made non-English features
+  unparseable after migration.
+- Generated projects now ship `behave.ini` instead of `behave.toml`: Behave
+  1.3.x only reads `behave.ini`, `.behaverc`, `setup.cfg`, `tox.ini`, and
+  `pyproject.toml`, so the generated `behave.toml` was silently ignored. The
+  INI file uses `[behave]` keys (`paths`, `default_tags`) that Behave
+  actually understands. `behave.toml` is still recognised as a project marker
+  for existing projects.
+- CLI usage errors (unknown options, missing arguments, misplaced global
+  options) now print the error to stderr instead of exiting with code 2 and
+  no output.
+- `init --template-engine jinja2` no longer emits literal `$project_name`
+  placeholders: the jinja2 engine also substitutes `$name` variables present
+  in the context after the jinja2 pass. The engine option now defaults to the
+  configured `template_engine` instead of always `string`.
+- `update` no longer strips behave-kit/behave-data wiring from a generated
+  `environment.py` when the `--kit`/`--data` flags are not repeated; existing
+  imports are detected and preserved.
+- `update` reports files whose content is already current as `Unchanged`
+  instead of always claiming `Updated`.
+- `recording.py`: the generated navigate step calls `context.page.goto()`
+  (the real Playwright API) instead of the nonexistent `navigate()`, and the
+  scroll step pattern is typed (`{y:d}`) with an `int` parameter.
+- `check` suggestions now store the quoted step text in `step` instead of the
+  full diagnostic message.
+- `safe_parse_feature_filename` now recognises Windows-style absolute paths
+  (drive-letter and UNC) even when running on POSIX hosts, fixing the
+  `test_safe_parse_feature_filename_handles_windows_absolute` CI failures on
+  Linux and macOS.
+- `release.yml`: tag creation is now idempotent — the workflow no longer
+  fails on re-runs when the release tag already exists.
+- `add config` errors out on a malformed `optional-dependencies` array
+  instead of inserting a stray line that produces invalid TOML.
+- Tags emitted in generated features are now sorted and deduplicated, so
+  generated files are stable under `behave-gen format --check`.
+- Fixed broken links to `github.com/behave/behave-kit` and
+  `behave/behave-data` in generated `environment.py` docstrings; they now
+  point to PyPI.
+- Regenerated the stale step libraries in `examples/` and converted their
+  `behave.toml` to `behave.ini`.
+
+### Changed
+
+- Stale "phase" docstrings in `cli/app.py` and `commands/add.py` corrected.
+- `--verbose` and `--dry-run` now print a notice that they are not
+  implemented instead of being silently ignored.
+- `docs/cli.md` clarifies that global options go before the subcommand;
+  `docs/configuration.md`, `docs/templates.md`, `docs/step-libraries.md`,
+  `docs/architecture.md`, `docs/ci-cd.md`, `docs/index.md`, and
+  `docs/generators.md` were corrected to match actual behaviour.
+- Docs now state that `from-postman` accepts Postman Collection v2.0 and
+  v2.1, matching the parser.
+- The `behave-gen-check` pre-commit hook now installs `behave-doctor` via
+  `additional_dependencies`, so it runs real diagnostics instead of exiting
+  as a no-op.
+
 ## [1.2.0] - 2026-08-11
 
 ### Added
