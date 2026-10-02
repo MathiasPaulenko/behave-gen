@@ -38,7 +38,8 @@ behave
   runtime. Everything else is an optional extra.
 - **No empty skeletons** — step definitions are real, runnable code. See
   [ADR-0001](architecture.md#adr-0001-no-empty-step-skeletons).
-- **Idempotent** — running a command twice produces the same result.
+- **Safe by default** — existing files are never overwritten without
+  `--force`, and `behave-gen update` reports unchanged files separately.
 - **Deterministic** — identical inputs always produce identical projects.
 
 ## Next steps

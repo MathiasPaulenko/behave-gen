@@ -28,7 +28,7 @@ behave-gen add feature login --tags smoke,auth
 ```
 
 ```gherkin
-@smoke @auth
+@auth @smoke
 Feature: Login
   Description for Login.
 
@@ -80,7 +80,9 @@ for API-backed CRUD operations.
 ## Custom templates
 
 Place custom `.feature` templates in your project's `templates_dir` (default:
-`templates/`). The template engine is configured via
+`templates/`). `behave-gen add feature --template NAME` looks for
+`templates/NAME.feature` first and falls back to the built-ins. The template
+engine is configured via
 [`template_engine` in `pyproject.toml`](configuration.md#template-engine).
 
 ### string engine
@@ -103,10 +105,17 @@ ${tags}Feature: $feature_name
     Given a precondition for {{ feature_name }}
 ```
 
+The jinja2 engine also substitutes `$name` placeholders for variables present
+in the context, so built-in templates keep working when it is selected.
+Unknown `$name` placeholders are left untouched.
+
+`behave-gen init --template` also accepts a path to a directory containing a
+custom project template set.
+
 !!! note "Tags include a trailing newline"
 
     The `tags` variable already contains a trailing `\n` when tags are
-    present (e.g. `@smoke @auth\n`). This means `${tags}Feature:` renders
+    present (e.g. `@auth @smoke\n`). This means `${tags}Feature:` renders
     as two lines — tags on their own line, then `Feature:` on the next —
     which is valid Gherkin. When no tags are provided, `tags` is empty and
     the line collapses to just `Feature:`.
@@ -115,6 +124,6 @@ ${tags}Feature: $feature_name
 
 | Variable | Description |
 | -------- | ----------- |
-| `feature_name` | Humanized feature name (e.g. `user_login` → `User login`). |
+| `feature_name` | Humanized feature name (e.g. `user_login` → `User Login`). |
 | `name` | Raw feature name as passed on the CLI. |
-| `tags` | Tags line including trailing newline (e.g. `@smoke @auth\n`), or empty string when no tags are set. |
+| `tags` | Sorted tag line including trailing newline (e.g. `@auth @smoke\n`), or empty string when no tags are set. |

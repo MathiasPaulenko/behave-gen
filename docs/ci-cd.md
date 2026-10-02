@@ -64,16 +64,18 @@ Use behave-gen as a pre-commit hook:
 ```yaml
 repos:
   - repo: https://github.com/MathiasPaulenko/behave-gen
-    rev: v1.1.3
+    rev: v1.2.0
     hooks:
       - id: behave-gen-check
-        args: ["check"]
 ```
+
+The hook environment installs `behave-doctor` automatically
+(`additional_dependencies`), so `check` runs real diagnostics.
 
 ## Exit codes
 
 | Code | Meaning |
 | ---- | ------- |
 | `0` | Success / clean |
-| `1` | Issues found or error |
-| `2` | Scan error (invalid input) |
+| `1` | Issues found, project error, or tool failure |
+| `2` | CLI usage error (unknown option or missing argument) |

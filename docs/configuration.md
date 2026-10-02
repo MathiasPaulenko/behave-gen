@@ -24,8 +24,8 @@ default_tags = []
 | `features_dir` | `str` | `"features"` | Directory containing `.feature` files. |
 | `steps_dir` | `str` | `"features/steps"` | Directory containing step definitions. |
 | `environment_file` | `str` | `"environment.py"` | Path to the environment hooks file. |
-| `templates_dir` | `str` | `"templates"` | Directory for custom templates. |
-| `template_engine` | `str` | `"string"` | Template engine: `"string"` or `"jinja2"`. |
+| `templates_dir` | `str` | `"templates"` | Directory for custom `.feature` templates (checked before the built-ins). |
+| `template_engine` | `str` | `"string"` | Template engine used by `init` and `add feature`: `"string"` or `"jinja2"`. |
 | `default_tags` | `str` or `list[str]` | `[]` | Tags applied to all generated features. |
 
 ## Template engine
@@ -44,6 +44,10 @@ For advanced templating with conditionals, loops, and filters, use Jinja2:
 [tool.behave-gen]
 template_engine = "jinja2"
 ```
+
+The jinja2 engine understands `{{ }}` syntax and also substitutes `$name`
+placeholders, so built-in templates work under either engine.
+`init --template-engine` overrides this value for a single run.
 
 Requires the `jinja2` extra:
 
@@ -67,8 +71,10 @@ Tags passed via `--tags` on the CLI are combined with `default_tags`.
 
 ## Custom templates
 
-Place custom templates in the `templates_dir` directory. Feature templates
-must be `.feature` files using the configured template engine.
+Place custom feature templates in the `templates_dir` directory. Running
+`behave-gen add feature NAME --template custom` renders
+`templates/custom.feature` using the configured template engine. `init
+--template` accepts a directory path for whole-project template sets.
 
 With `string` engine:
 

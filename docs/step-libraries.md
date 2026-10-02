@@ -82,6 +82,7 @@ management steps.
 Feature: Auth
   Scenario: Login flow
     Given I am not authenticated
+    And I have a session token "abc123"
     When I store the value "abc123" as "session_token"
     Then I should be authenticated
     And the session value "session_token" should be "abc123"
@@ -111,7 +112,7 @@ Feature: Login
       """
     Then the response status should be 200
     And the response JSON should contain "token"
-    When I store the value "abc123" as "session_token"
+    And I have a session token "abc123"
     Then I should be authenticated
 ```
 

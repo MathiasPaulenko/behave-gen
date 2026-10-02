@@ -14,11 +14,11 @@ This creates:
 ```text
 my-project/
   features/
-    sample.feature      Placeholder feature (replace or remove)
+    sample.feature      Runnable sample feature (replace or remove)
     steps/
-      .gitkeep
+      sample_steps.py   Step definitions for the sample
   environment.py        Behave hooks (before/after scenario)
-  behave.toml           Behave configuration
+  behave.ini            Behave configuration
   pyproject.toml        Project metadata + [tool.behave-gen] config
   README.md
 ```
@@ -38,7 +38,7 @@ behave-gen add feature login --tags smoke,auth
 Creates `features/login.feature`:
 
 ```gherkin
-@smoke @auth
+@auth @smoke
 Feature: Login
   Description for Login.
 
@@ -47,6 +47,9 @@ Feature: Login
     When an action is performed
     Then the result is observed
 ```
+
+Tags are emitted in sorted order so generated features are stable under
+`behave-gen format --check`.
 
 Use the CRUD template for scenario outlines:
 

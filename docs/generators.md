@@ -17,6 +17,9 @@ behave-gen from-openapi spec.yaml --out-dir gen --step-lib http --tag api
    standard library). Requires the `openapi` extra for YAML files.
 2. **Build features** — Each path produces a `.feature` file grouped by path
    segment. Each operation (GET, POST, PUT, DELETE, PATCH) becomes a scenario.
+   The `Then` step asserts the first declared 2xx response (e.g. `201` for a
+   `POST` that documents `201`), falling back to the first declared status or
+   `200` when the operation has no `responses` section.
 3. **Build steps** — When `--step-lib http` is passed, a concrete
    `http_steps.py` module is generated alongside the features.
 
@@ -74,7 +77,7 @@ patterns, so they work with the generated `http_steps.py`.
 
 ## from-postman
 
-Generate features from a Postman Collection v2.1 JSON file.
+Generate features from a Postman Collection v2.x (v2.0 or v2.1) JSON file.
 
 ```bash
 behave-gen from-postman collection.json --out-dir gen --step-lib http --tag api
@@ -93,7 +96,7 @@ behave-gen from-postman collection.json --out-dir gen --step-lib http --tag api
 
 | Option | Description |
 | ------ | ----------- |
-| `COLLECTION` | Path to a Postman Collection v2.1 JSON file. |
+| `COLLECTION` | Path to a Postman Collection v2.x (v2.0 or v2.1) JSON file. |
 | `--out-dir` | Output directory for the generated project (default: `gen`). |
 | `--step-lib` | Step library to bind (e.g. `http`). |
 | `--tag` | Tag applied to all generated scenarios. |
@@ -135,5 +138,7 @@ When the source spec changes, re-run the generator or use `behave-gen update`:
 behave-gen update --force
 ```
 
-This re-applies generated `environment.py` and step libraries, preserving any
-previously added `--kit` or `--data` wiring.
+This re-applies generated `environment.py` and step libraries. Existing
+behave-kit/behave-data wiring in `environment.py` is preserved, and files
+whose content is already current are reported as unchanged rather than
+updated.

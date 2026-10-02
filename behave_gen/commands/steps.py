@@ -2,7 +2,7 @@
 
 Copies a built-in step library (a real, runnable step-definition module) into
 a project's ``features/steps/`` directory. No empty ``pass`` skeletons are
-ever emitted (see ``ref/adr/0001-no-empty-step-skeletons.md``).
+ever emitted (see ADR-0001 in ``docs/architecture.md``).
 """
 
 from __future__ import annotations

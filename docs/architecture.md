@@ -53,9 +53,13 @@ behave_gen/
 ### Modular monolith
 
 behave-gen is a single package with a plugin-like generator protocol.
-Built-in generators live in `behave_gen.generators`. Third-party generators
-can register through the `behave_gen.generators` entry point. The CLI, core,
-templates, and integrations are part of the same package and deploy.
+Built-in generators live in `behave_gen.generators` and implement the
+`Generator` protocol from `behave_gen.generators.base`; third-party code can
+implement the same protocol and call the `run_*` command functions directly.
+Custom template sets can be registered through
+`TemplateRegistry.register_directory` or passed to `init --template` as a
+directory path. The CLI, core, templates, and integrations are part of the
+same package and deploy.
 
 ### Template engine abstraction
 
@@ -92,7 +96,11 @@ implementations are produced only when:
 - a reusable step library is added (`behave-gen add steps --lib <lib>`), or
 - a generator has enough backend context to emit concrete code
   (`behave-gen from-openapi --step-lib <lib>`), or
-- a Cucumber migration translates existing code to Python.
+- a wavexis recording provides concrete browser actions
+  (`behave-gen add steps --from-recording`).
+
+Cucumber migration only copies `.feature` files; Java step definitions are
+reported but not translated.
 
 Undefined steps are surfaced by `behave-doctor` through `behave-gen check` and
 resolved by adding a library or writing steps manually.
@@ -110,8 +118,8 @@ extensible enough for community generators.
 
 **Decision:** Use a modular monolith: a single package `behave_gen` with a
 plugin-like generator protocol. Built-in generators live in
-`behave_gen.generators`. Third-party generators can register through the
-`behave_gen.generators` entry point.
+`behave_gen.generators`. Third-party generators implement the `Generator`
+protocol; entry-point discovery is not implemented yet.
 
 ---
 

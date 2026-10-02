@@ -29,7 +29,7 @@ behave-format), and migrates Cucumber projects to Behave.
 | `lint` | Lint `.feature` files via behave-lint. |
 | `format` | Format `.feature` files via behave-format. |
 | `from-openapi` | Generate features and HTTP steps from an OpenAPI 3.x spec. |
-| `from-postman` | Generate features from a Postman Collection v2.1. |
+| `from-postman` | Generate features from a Postman Collection v2.x (v2.0/v2.1). |
 | `from-swagger` | Convert Swagger 2.0 to OpenAPI 3.x and generate features. |
 | `migrate` | Migrate a Cucumber (Java) project to Behave. |
 | `preview` | Pretty-print a `.feature` file. |
