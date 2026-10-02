@@ -185,12 +185,23 @@ def test_init_uses_registry_and_engine(tmp_path: Path) -> None:
     assert "proj" in (root / "README.md").read_text(encoding="utf-8")
 
 
+def test_jinja2_engine_substitutes_dollar_vars() -> None:
+    """The jinja2 engine also substitutes ``$name`` placeholders so the
+    built-in template sets keep working when it is selected."""
+    pytest.importorskip("jinja2")
+    engine = get_engine("jinja2")
+    assert engine.render("{{ name }} / $name", {"name": "x"}) == "x / x"
+    # Unknown $vars are left untouched.
+    assert engine.render("$other", {"name": "x"}) == "$other"
+
+
 def test_init_jinja2_engine_when_installed(tmp_path: Path) -> None:
     pytest.importorskip("jinja2")
-    # The default templates use $name placeholders, so jinja2 rendering of
-    # $name is a literal pass-through; this just verifies the engine path.
     root = init_project(tmp_path, InitOptions(name="proj", template_engine="jinja2"))
     assert (root / "README.md").is_file()
+    pyproject = (root / "pyproject.toml").read_text(encoding="utf-8")
+    assert 'name = "proj"' in pyproject
+    assert "$project_name" not in pyproject
 
 
 def test_template_set_ignores_symlinks_outside_root(tmp_path: Path) -> None:

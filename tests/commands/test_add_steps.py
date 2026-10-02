@@ -156,4 +156,5 @@ def test_sample_feature_runs_end_to_end_with_behave(tmp_path: Path) -> None:
         check=False,
     )
     assert proc.returncode == 0, f"behave failed:\n{proc.stdout}\n{proc.stderr}"
-    assert "1 scenario passed" in proc.stdout or "1 passed" in proc.stdout
+    # sample.feature (from init) + the session feature written above.
+    assert "2 scenarios passed" in proc.stdout

@@ -22,8 +22,10 @@ class TestInitScaffolding:
         files = collect_files(project)
         assert "features/.gitkeep" in files
         assert "features/steps/.gitkeep" in files
+        assert "features/sample.feature" in files
+        assert "features/steps/sample_steps.py" in files
         assert "environment.py" in files
-        assert "behave.toml" in files
+        assert "behave.ini" in files
         assert "pyproject.toml" in files
         assert "README.md" in files
 

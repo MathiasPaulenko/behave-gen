@@ -105,6 +105,33 @@ def test_run_unknown_option_returns_nonzero() -> None:
     assert run(["--not-a-real-option"]) != 0
 
 
+def test_run_unknown_option_prints_error(capsys: pytest.CaptureFixture[str]) -> None:
+    """Usage errors must print a message instead of failing silently."""
+    code = run(["--not-a-real-option"])
+    assert code == 2
+    assert "No such option" in capsys.readouterr().err
+
+
+def test_run_missing_argument_prints_error(capsys: pytest.CaptureFixture[str]) -> None:
+    """A missing required argument must be reported to the user."""
+    code = run(["init"])
+    assert code == 2
+    assert "Missing argument" in capsys.readouterr().err
+
+
+def test_run_unknown_command_prints_error(capsys: pytest.CaptureFixture[str]) -> None:
+    code = run(["definitely-not-a-command"])
+    assert code == 2
+    err = capsys.readouterr().err
+    assert "No such command" in err or "No such option" in err
+
+
+def test_hidden_flags_warn_when_used(capsys: pytest.CaptureFixture[str]) -> None:
+    """--verbose/--dry-run are accepted but warn that they are no-ops."""
+    run(["--dry-run", "--verbose", "stats"])
+    assert "not implemented" in capsys.readouterr().err
+
+
 def test_run_propagates_typer_exit_code(monkeypatch: pytest.MonkeyPatch) -> None:
     """typer.Exit codes must be returned by the programmatic entry point."""
 

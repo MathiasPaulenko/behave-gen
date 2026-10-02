@@ -11,6 +11,7 @@ from typer.testing import CliRunner
 from behave_gen.cli.app import app
 from behave_gen.commands import steps as steps_mod
 from behave_gen.commands import update as update_mod
+from behave_gen.commands.environment import AddEnvironmentOptions, add_environment
 from behave_gen.commands.init import InitOptions, init_project
 from behave_gen.commands.steps import AddStepsOptions, add_steps
 from behave_gen.commands.update import UpdateOptions, run_update
@@ -120,6 +121,36 @@ def test_update_with_kit_data(tmp_path: Path) -> None:
     content = (root / "environment.py").read_text(encoding="utf-8")
     assert "behave_kit" in content
     assert "behave_data" in content
+
+
+def test_update_preserves_existing_kit_wiring(tmp_path: Path) -> None:
+    """``update`` without --kit must keep behave-kit wiring already present."""
+    root = _make_project(tmp_path)
+    add_environment(root, AddEnvironmentOptions(kit=True))
+    code = run_update(UpdateOptions(), project_root=root)
+    assert code == 0
+    content = (root / "environment.py").read_text(encoding="utf-8")
+    assert "behave_kit" in content
+    assert "setup_kit" in content
+
+
+def test_update_preserves_existing_data_wiring(tmp_path: Path) -> None:
+    root = _make_project(tmp_path)
+    add_environment(root, AddEnvironmentOptions(data=True))
+    code = run_update(UpdateOptions(), project_root=root)
+    assert code == 0
+    assert "behave_data" in (root / "environment.py").read_text(encoding="utf-8")
+
+
+def test_update_reports_unchanged_files(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    """Files already matching the generated output are reported unchanged."""
+    root = _make_project(tmp_path)
+    add_steps(root, AddStepsOptions(lib="http"))
+    code = run_update(UpdateOptions(), project_root=root)
+    assert code == 0
+    out = capsys.readouterr().out
+    assert "Unchanged environment.py" in out
+    assert "already up to date" in out
 
 
 # --- Regression tests for bug fixes ---

@@ -40,7 +40,12 @@ def test_find_project_root_locates_marker(tmp_path: Path) -> None:
     assert find_project_root(nested) == tmp_path.resolve()
 
 
-def test_find_project_root_with_behave_toml(tmp_path: Path) -> None:
+def test_find_project_root_with_behave_ini(tmp_path: Path) -> None:
+    (tmp_path / "behave.ini").write_text("[behave]\n", encoding="utf-8")
+    assert find_project_root(tmp_path) == tmp_path.resolve()
+
+
+def test_find_project_root_with_legacy_behave_toml(tmp_path: Path) -> None:
     (tmp_path / "behave.toml").write_text("[behave]\n", encoding="utf-8")
     assert find_project_root(tmp_path) == tmp_path.resolve()
 
@@ -57,7 +62,7 @@ def test_project_from_root_resolves_paths(tmp_path: Path) -> None:
     project = Project.from_root(tmp_path)
     assert project.root == tmp_path.resolve()
     assert project.features_dir == (tmp_path / "specs").resolve()
-    assert project.config_file == (tmp_path / "behave.toml").resolve()
+    assert project.config_file == (tmp_path / "behave.ini").resolve()
     assert isinstance(project.config, BehaveGenConfig)
 
 

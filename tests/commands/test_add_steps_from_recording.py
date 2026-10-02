@@ -184,7 +184,7 @@ class TestStepDefinitions:
         assert "I navigate to" in source
         assert "@given" in source
         assert "def step_navigate" in source
-        assert "context.page.navigate(url)" in source
+        assert "context.page.goto(url)" in source
 
     def test_generates_click_selector_step(self) -> None:
         actions = parse_recording(_FIXTURES / "sample_recording.yaml")
@@ -209,8 +209,9 @@ class TestStepDefinitions:
     def test_generates_scroll_step(self) -> None:
         actions = parse_recording(_FIXTURES / "sample_recording.yaml")
         source, generated, _ = actions_to_step_definitions(actions)
-        assert "I scroll to {y}" in source
+        assert "I scroll to {y:d}" in source
         assert "def step_scroll" in source
+        assert "y: int" in source
 
     def test_no_pass_skeletons(self) -> None:
         actions = parse_recording(_FIXTURES / "sample_recording.yaml")
@@ -356,7 +357,7 @@ class TestAddStepsFromRecording:
 
                 @given('I navigate to "{url}"')
                 def step_navigate(context, url):
-                    context.page.navigate(url)
+                    context.page.goto(url)
                 """
             ),
             encoding="utf-8",

@@ -10,7 +10,8 @@ import pytest
 from typer.testing import CliRunner
 
 from behave_gen.cli.app import app
-from behave_gen.commands.init import InitError, InitOptions, init_project
+from behave_gen.commands.init import InitError, InitOptions, init_project, run_init
+from behave_gen.config import BehaveGenConfig
 
 runner = CliRunner()
 
@@ -25,10 +26,26 @@ def test_init_creates_project(tmp_path: Path) -> None:
     files = _project_files(root)
     assert "features/.gitkeep" in files
     assert "features/steps/.gitkeep" in files
+    assert "features/sample.feature" in files
+    assert "features/steps/sample_steps.py" in files
     assert "environment.py" in files
-    assert "behave.toml" in files
+    assert "behave.ini" in files
     assert "pyproject.toml" in files
     assert "README.md" in files
+
+
+def test_init_sample_project_runs_with_behave(tmp_path: Path) -> None:
+    """The generated sample feature is runnable, not just parseable."""
+    root = init_project(tmp_path, InitOptions(name="proj"))
+    proc = subprocess.run(
+        [sys.executable, "-m", "behave", "--no-color"],
+        cwd=root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert proc.returncode == 0, f"behave failed:\n{proc.stdout}\n{proc.stderr}"
+    assert "1 scenario passed" in proc.stdout
 
 
 def test_init_substitutes_project_name(tmp_path: Path) -> None:
@@ -137,6 +154,63 @@ def test_init_rejects_path_traversal(tmp_path: Path) -> None:
 def test_init_rejects_absolute_name(tmp_path: Path) -> None:
     with pytest.raises(InitError, match="Invalid project name"):
         init_project(tmp_path, InitOptions(name="C:/unsafe"))
+
+
+def test_init_jinja2_engine_substitutes_vars(tmp_path: Path) -> None:
+    """The jinja2 engine must still fill ``$name`` placeholders in built-ins."""
+    pytest.importorskip("jinja2")
+    root = init_project(tmp_path, InitOptions(name="proj", template_engine="jinja2"))
+    pyproject = (root / "pyproject.toml").read_text(encoding="utf-8")
+    assert 'name = "proj"' in pyproject
+    env = (root / "environment.py").read_text(encoding="utf-8")
+    assert "$project_name" not in env
+
+
+def test_init_template_engine_from_config(tmp_path: Path) -> None:
+    """``template_engine`` in the parent's pyproject.toml is honoured."""
+    pytest.importorskip("jinja2")
+    (tmp_path / "pyproject.toml").write_text(
+        '[tool.behave-gen]\ntemplate_engine = "jinja2"\n', encoding="utf-8"
+    )
+    root = init_project(
+        tmp_path,
+        InitOptions(name="proj"),
+        config=BehaveGenConfig.default().with_overrides(template_engine="jinja2"),
+    )
+    pyproject = (root / "pyproject.toml").read_text(encoding="utf-8")
+    assert 'name = "proj"' in pyproject
+
+
+def test_init_cli_template_engine_from_config(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """run_init loads ``[tool.behave-gen]`` from the target dir when no
+    ``--config`` is given."""
+    pytest.importorskip("jinja2")
+    (tmp_path / "pyproject.toml").write_text(
+        '[tool.behave-gen]\ntemplate_engine = "jinja2"\n', encoding="utf-8"
+    )
+    monkeypatch.chdir(tmp_path)
+    code = run_init(InitOptions(name="proj"), target_dir=None)
+    assert code == 0
+    pyproject = (tmp_path / "proj" / "pyproject.toml").read_text(encoding="utf-8")
+    assert 'name = "proj"' in pyproject
+
+
+def test_init_template_directory(tmp_path: Path) -> None:
+    """``--template`` accepts a path to a custom template set directory."""
+    tpl_dir = tmp_path / "my_templates"
+    tpl_dir.mkdir()
+    (tpl_dir / "README.md").write_text("# Custom $project_name\n", encoding="utf-8")
+    (tpl_dir / "marker.txt").write_text("custom", encoding="utf-8")
+    root = init_project(tmp_path, InitOptions(name="proj", template=str(tpl_dir)))
+    assert (root / "marker.txt").read_text(encoding="utf-8") == "custom"
+    assert "# Custom proj" in (root / "README.md").read_text(encoding="utf-8")
+
+
+def test_init_missing_template_dir_falls_back_to_registry_error(tmp_path: Path) -> None:
+    with pytest.raises(InitError, match="Unknown template set"):
+        init_project(tmp_path, InitOptions(name="proj", template="no/such/dir"))
 
 
 def test_init_target_dir_existing_file_raises(tmp_path: Path) -> None:

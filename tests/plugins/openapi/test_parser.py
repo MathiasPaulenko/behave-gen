@@ -150,3 +150,24 @@ def test_parse_null_version_uses_default(tmp_path: Path) -> None:
     )
     spec = parse_openapi(path)
     assert spec.version == "0.0.0"
+
+
+def test_expected_status_prefers_declared_2xx(tmp_path: Path) -> None:
+    """A POST declaring a 201 response should assert 201, not 200."""
+    path = tmp_path / "spec.json"
+    path.write_text(
+        '{"openapi": "3.0.0", "info": {"title": "API", "version": "1"},'
+        ' "paths": {"/items": {"post": {"summary": "Create",'
+        ' "responses": {"201": {"description": "Created"}}}},'
+        ' "/gone": {"delete": {"summary": "Delete",'
+        ' "responses": {"404": {"description": "Not found"}}}},'
+        ' "/bare": {"get": {"summary": "No responses"}}}}',
+        encoding="utf-8",
+    )
+    spec = parse_openapi(path)
+    by_path = {op.path: op for op in spec.operations}
+    assert by_path["/items"].expected_status == 201
+    # No 2xx declared: fall back to the first declared numeric status.
+    assert by_path["/gone"].expected_status == 404
+    # No responses at all: default 200.
+    assert by_path["/bare"].expected_status == 200

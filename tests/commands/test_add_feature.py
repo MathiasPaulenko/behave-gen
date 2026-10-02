@@ -53,14 +53,15 @@ def test_add_feature_with_tags(tmp_path: Path) -> None:
     root = _make_project(tmp_path)
     path = add_feature(root, AddFeatureOptions(name="auth", tags="@smoke @api"))
     content = path.read_text(encoding="utf-8")
-    assert content.startswith("@smoke @api\nFeature:")
+    # Tags are emitted sorted so the output is stable under format --check.
+    assert content.startswith("@api @smoke\nFeature:")
 
 
 def test_add_feature_tags_comma_separated(tmp_path: Path) -> None:
     root = _make_project(tmp_path)
     path = add_feature(root, AddFeatureOptions(name="auth", tags="smoke, api"))
     content = path.read_text(encoding="utf-8")
-    assert content.startswith("@smoke @api\nFeature:")
+    assert content.startswith("@api @smoke\nFeature:")
 
 
 def test_add_feature_tags_without_at_prefix(tmp_path: Path) -> None:
@@ -109,6 +110,55 @@ def test_add_feature_unknown_template_raises(tmp_path: Path) -> None:
     root = _make_project(tmp_path)
     with pytest.raises(AddError, match="Unknown feature template"):
         add_feature(root, AddFeatureOptions(name="x", template="nope"))
+
+
+def test_add_feature_custom_template_from_templates_dir(tmp_path: Path) -> None:
+    """A ``<name>.feature`` file in templates_dir takes precedence."""
+    root = _make_project(tmp_path)
+    tpl_dir = root / "templates"
+    tpl_dir.mkdir()
+    (tpl_dir / "custom.feature").write_text(
+        "${tags}Feature: Custom $feature_name\n", encoding="utf-8"
+    )
+    path = add_feature(
+        root,
+        AddFeatureOptions(name="login", template="custom", tags="smoke"),
+        templates_dir=tpl_dir,
+    )
+    content = path.read_text(encoding="utf-8")
+    assert content.startswith("@smoke\nFeature: Custom Login\n")
+
+
+def test_add_feature_custom_template_escapes_templates_dir(tmp_path: Path) -> None:
+    root = _make_project(tmp_path)
+    tpl_dir = root / "templates"
+    tpl_dir.mkdir()
+    with pytest.raises(AddError, match="escapes"):
+        add_feature(
+            root,
+            AddFeatureOptions(name="x", template="../leak"),
+            templates_dir=tpl_dir,
+        )
+
+
+def test_add_feature_jinja2_engine(tmp_path: Path) -> None:
+    """The ``jinja2`` engine renders {{ }} and $vars in custom templates."""
+    pytest.importorskip("jinja2")
+    root = _make_project(tmp_path)
+    tpl_dir = root / "templates"
+    tpl_dir.mkdir()
+    (tpl_dir / "custom.feature").write_text(
+        "Feature: {{ feature_name }}\n  Scenario: $name works\n", encoding="utf-8"
+    )
+    path = add_feature(
+        root,
+        AddFeatureOptions(name="login", template="custom"),
+        templates_dir=tpl_dir,
+        template_engine="jinja2",
+    )
+    content = path.read_text(encoding="utf-8")
+    assert "Feature: Login" in content
+    assert "Scenario: login works" in content
 
 
 def test_add_feature_missing_project_root_raises(tmp_path: Path) -> None:

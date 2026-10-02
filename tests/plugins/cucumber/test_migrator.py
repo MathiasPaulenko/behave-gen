@@ -28,13 +28,15 @@ def test_migrate_copies_feature_files(tmp_path: Path) -> None:
     ).is_file()
 
 
-def test_migrate_strips_language_directive(tmp_path: Path) -> None:
+def test_migrate_preserves_language_directive(tmp_path: Path) -> None:
+    """``# language: xx`` is valid Gherkin for behave — it must be kept so
+    non-English features stay parseable."""
     out = tmp_path / "out"
     migrate_cucumber(FIXTURES, out)
     content = (
         out / "features" / "src" / "test" / "resources" / "features" / "login.feature"
     ).read_text(encoding="utf-8")
-    assert "# language:" not in content
+    assert "# language: en" in content
     assert "Feature: Login" in content
 
 

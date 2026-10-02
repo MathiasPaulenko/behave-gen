@@ -407,16 +407,15 @@ def test_add_config_is_idempotent_for_hash_in_inline_array_dependency(
     assert text.count("behave-kit>=1.2.3#abc") == 1
 
 
-def test_add_config_appends_to_malformed_array(tmp_path: Path) -> None:
-    """A missing closing bracket should not stop the dependency from being appended."""
+def test_add_config_rejects_malformed_array(tmp_path: Path) -> None:
+    """A missing closing bracket must error instead of writing invalid TOML."""
     root = _make_project(tmp_path)
     (root / "pyproject.toml").write_text(
         '[project]\nname = "proj"\n\n[project.optional-dependencies]\nkit = [\n    "other>=1.0",\n',
         encoding="utf-8",
     )
-    add_config(root, "behave-kit")
-    text = (root / "pyproject.toml").read_text(encoding="utf-8")
-    assert "behave-kit>=1.0" in text
+    with pytest.raises(EnvironmentError, match="closing"):
+        add_config(root, "behave-kit")
 
 
 def test_add_config_creates_optional_section_before_urls(tmp_path: Path) -> None:
