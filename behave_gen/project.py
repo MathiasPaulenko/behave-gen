@@ -15,7 +15,7 @@ from behave_gen.paths import resolve_path
 
 __all__ = ["Project", "ProjectError", "discover_project", "find_project_root"]
 
-_PROJECT_MARKERS = ("pyproject.toml", "behave.toml")
+_PROJECT_MARKERS = ("pyproject.toml", "behave.ini", "behave.toml")
 
 
 class ProjectError(Exception):
@@ -78,7 +78,7 @@ class Project:
             features_dir=features,
             steps_dir=steps,
             environment_file=env,
-            config_file=root_path / "behave.toml",
+            config_file=root_path / "behave.ini",
             templates_dir=templates,
             config=resolved_config,
         )
@@ -92,8 +92,8 @@ class Project:
 def find_project_root(start: str | Path) -> Path:
     """Search upward from ``start`` for a project marker.
 
-    The first directory containing ``pyproject.toml`` or ``behave.toml`` is
-    returned.
+    The first directory containing ``pyproject.toml``, ``behave.ini`` or a
+    legacy ``behave.toml`` is returned.
 
     Args:
         start: Directory to start searching from.

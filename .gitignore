@@ -83,5 +83,6 @@ ref/
 /testdry/
 /features/
 /environment.py
+/behave.ini
 /behave.toml
 AGENTS.md
