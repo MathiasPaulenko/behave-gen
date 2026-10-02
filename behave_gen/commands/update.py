@@ -30,6 +30,7 @@ class UpdateReport:
     """Outcome of an update run."""
 
     updated: tuple[str, ...] = field(default_factory=tuple)
+    unchanged: tuple[str, ...] = field(default_factory=tuple)
     skipped: tuple[str, ...] = field(default_factory=tuple)
     warnings: tuple[str, ...] = field(default_factory=tuple)
 
@@ -61,14 +62,17 @@ def _is_generated(path: Path) -> bool:
     return _BEHAVE_GEN_MARKER in text
 
 
-def _update_step_libraries(project: Project, force: bool) -> tuple[list[str], list[str], list[str]]:
+def _update_step_libraries(
+    project: Project, force: bool
+) -> tuple[list[str], list[str], list[str], list[str]]:
     """Re-apply built-in step libraries that already exist in the project."""
     updated: list[str] = []
+    unchanged: list[str] = []
     skipped: list[str] = []
     warnings: list[str] = []
     steps_dir = project.steps_dir
     if not steps_dir.is_dir():
-        return updated, skipped, warnings
+        return updated, unchanged, skipped, warnings
 
     for lib, (_template_name, filename) in _BUILTIN_LIBRARIES.items():
         target = steps_dir / filename
@@ -81,6 +85,7 @@ def _update_step_libraries(project: Project, force: bool) -> tuple[list[str], li
             continue
 
         tmp_path = steps_dir / f".update-{uuid.uuid4().hex}.tmp"
+        rel = target.relative_to(project.root)
         try:
             add_steps(
                 project.root,
@@ -88,38 +93,64 @@ def _update_step_libraries(project: Project, force: bool) -> tuple[list[str], li
                 steps_dir=steps_dir,
                 output_file=tmp_path,
             )
-            tmp_path.replace(target)
-            updated.append(str(target.relative_to(project.root)))
+            if tmp_path.read_bytes() == target.read_bytes():
+                unchanged.append(str(rel))
+            else:
+                tmp_path.replace(target)
+                updated.append(str(rel))
         except Exception as exc:  # noqa: BLE001 - surface update failures cleanly.
-            rel = target.relative_to(project.root)
             warnings.append(f"Failed to update {rel}: {exc}")
         finally:
             with contextlib.suppress(OSError):
                 tmp_path.unlink(missing_ok=True)
-    return updated, skipped, warnings
+    return updated, unchanged, skipped, warnings
 
 
-def _update_environment(project: Project, options: UpdateOptions) -> tuple[list[str], list[str]]:
-    """Re-apply the environment.py template if it was generated."""
+def _detect_existing_wiring(env_file: Path) -> tuple[bool, bool]:
+    """Detect behave-kit/behave-data imports already present in an env file."""
+    try:
+        text = env_file.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return False, False
+    return "behave_kit" in text, "behave_data" in text
+
+
+def _update_environment(
+    project: Project, options: UpdateOptions
+) -> tuple[list[str], list[str], list[str]]:
+    """Re-apply the environment.py template if it was generated.
+
+    Existing behave-kit/behave-data wiring is preserved: passing ``--kit`` or
+    ``--data`` adds wiring, omitting them keeps whatever the file already has.
+    """
     updated: list[str] = []
+    unchanged: list[str] = []
     warnings: list[str] = []
     env_file = project.environment_file
     if not env_file.exists() and not env_file.is_symlink():
-        return updated, warnings
+        return updated, unchanged, warnings
     if not options.force and not _is_generated(env_file):
         warnings.append("Skipped environment.py: not a behave-gen file. Use --force to override.")
-        return updated, warnings
+        return updated, unchanged, warnings
 
+    existing_kit, existing_data = _detect_existing_wiring(env_file)
+    kit = options.kit or existing_kit
+    data = options.data or existing_data
+
+    before = env_file.read_bytes() if env_file.is_file() and not env_file.is_symlink() else b""
     try:
         add_environment(
             project.root,
-            AddEnvironmentOptions(kit=options.kit, data=options.data),
+            AddEnvironmentOptions(kit=kit, data=data),
             environment_file=project.environment_file,
         )
-        updated.append("environment.py")
+        if env_file.read_bytes() == before:
+            unchanged.append("environment.py")
+        else:
+            updated.append("environment.py")
     except Exception as exc:  # noqa: BLE001 - surface update failures cleanly.
         warnings.append(f"Failed to update environment.py: {exc}")
-    return updated, warnings
+    return updated, unchanged, warnings
 
 
 def run_update(
@@ -137,27 +168,34 @@ def run_update(
         return 1
 
     all_updated: list[str] = []
+    all_unchanged: list[str] = []
     all_skipped: list[str] = []
     all_warnings: list[str] = []
 
-    env_updated, env_warnings = _update_environment(project, options)
+    env_updated, env_unchanged, env_warnings = _update_environment(project, options)
     all_updated.extend(env_updated)
+    all_unchanged.extend(env_unchanged)
     all_warnings.extend(env_warnings)
 
-    steps_updated, steps_skipped, steps_warnings = _update_step_libraries(project, options.force)
+    steps_updated, steps_unchanged, steps_skipped, steps_warnings = _update_step_libraries(
+        project, options.force
+    )
     all_updated.extend(steps_updated)
+    all_unchanged.extend(steps_unchanged)
     all_skipped.extend(steps_skipped)
     all_warnings.extend(steps_warnings)
 
     for path in all_updated:
         print(f"Updated {path}")
+    for path in all_unchanged:
+        print(f"Unchanged {path}")
     for path in all_skipped:
         print(f"Skipped {path}", file=sys.stderr)
     for warning in all_warnings:
         print(f"update: warning: {warning}", file=sys.stderr)
 
-    if not all_updated and not all_skipped:
+    if not all_updated and not all_unchanged and not all_skipped:
         print("Nothing to update. No behave-gen generated files found.")
     else:
-        print(f"\nUpdated {len(all_updated)} file(s).")
+        print(f"\nUpdated {len(all_updated)} file(s), {len(all_unchanged)} already up to date.")
     return 0

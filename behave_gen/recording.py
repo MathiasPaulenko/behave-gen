@@ -15,7 +15,7 @@ Supported action types (first version):
 ``click``     ``When I click on "{selector}"`` *or*
               ``When I click "{text}"`` (fallback when no selector)
 ``type``      ``When I enter "{value}" into "{selector}"``
-``scroll``    ``When I scroll to {y}``
+``scroll``    ``When I scroll to {y:d}``
 ============  =================================================
 
 Other action types are silently skipped (future improvement).
@@ -249,7 +249,7 @@ _STEP_TEMPLATES: dict[str, tuple[str, str, str]] = {
     'I navigate to "{url}"': (
         "step_navigate",
         "given",
-        "    context.page.navigate(url)",
+        "    context.page.goto(url)",
     ),
     'I click on "{selector}"': (
         "step_click_selector",
@@ -266,7 +266,7 @@ _STEP_TEMPLATES: dict[str, tuple[str, str, str]] = {
         "when",
         "    context.page.fill(selector, value)",
     ),
-    "I scroll to {y}": (
+    "I scroll to {y:d}": (
         "step_scroll",
         "when",
         '    context.page.evaluate(f"window.scrollTo(0, {y})")',
@@ -295,7 +295,7 @@ def _key_type(action: RecordedAction) -> str | None:
 
 
 def _key_scroll(_action: RecordedAction) -> str | None:
-    return "I scroll to {y}"
+    return "I scroll to {y:d}"
 
 
 _KEY_DISPATCH: dict[str, Callable[[RecordedAction], str | None]] = {
@@ -371,10 +371,10 @@ def actions_to_step_definitions(
         func_name, decorator, body = _STEP_TEMPLATES[key]
         lines.append(f"@{decorator}('{key}')")
         lines.append(f"def {func_name}(context: Any) -> None:")
-        # Extract parameter names from the template key for the signature.
-        params = re.findall(r"\{(\w+)\}", key)
+        # Extract parameter names (and types) from the template key for the signature.
+        params = re.findall(r"\{(\w+)(?::(\w+))?\}", key)
         if params:
-            sig = ", ".join(f"{p}: str" for p in params)
+            sig = ", ".join(f"{name}: {'int' if spec == 'd' else 'str'}" for name, spec in params)
             lines[-1] = f"def {func_name}(context: Any, {sig}) -> None:"
         lines.append(body)
         if i < len(generated) - 1:

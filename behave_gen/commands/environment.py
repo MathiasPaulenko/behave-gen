@@ -374,9 +374,9 @@ def _insert_optional_dependency(  # noqa: PLR0912 - TOML tree walk is inherently
             close_idx = j
             break
     if close_idx is None:
-        # Malformed array; append at the end of the section as a best effort.
-        lines.insert(end_idx, f'    "{package_spec}",\n')
-        return "".join(lines)
+        raise EnvironmentError(
+            f"Malformed pyproject.toml: the '{extra}' array is missing a closing ']'."
+        )
 
     content_line, close_line = _split_close_line(lines[close_idx])
     if content_line is not None:

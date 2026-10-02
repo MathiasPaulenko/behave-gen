@@ -8,6 +8,7 @@ suggestions for undefined steps. Degrades to an install hint when the optional
 from __future__ import annotations
 
 import json
+import re
 import sys
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -75,6 +76,12 @@ def _to_int_line(value: object) -> int:
     return _safe_int(value)
 
 
+def _extract_step_text(message: str) -> str:
+    """Extract the quoted step text from an undefined-step diagnostic message."""
+    match = re.search(r'"([^"]+)"', message)
+    return match.group(1) if match else message
+
+
 def _suggest_for_undefined(step_text: str) -> str:
     """Build a suggestion for an undefined step based on its text."""
     lowered = step_text.lower()
@@ -104,8 +111,9 @@ def _build_report_from_doctor(project_root: Path, raw_report: Any) -> CheckRepor
         rule_id = str(entry["rule_id"])
         message = str(entry["message"])
         if rule_id in _UNDEFINED_STEP_RULES or "undefined" in message.lower():
+            step_text = _extract_step_text(message)
             suggestions.append(
-                CheckSuggestion(step=message, suggestion=_suggest_for_undefined(message))
+                CheckSuggestion(step=step_text, suggestion=_suggest_for_undefined(step_text))
             )
 
     for diag in getattr(raw_report, "warnings", []) or []:
