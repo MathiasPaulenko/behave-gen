@@ -1,13 +1,8 @@
-"""``behave-gen add`` command implementations.
-
-Phase 5 implements ``add feature``. Other ``add`` subcommands are wired in
-later phases.
-"""
+"""``behave-gen add feature`` command implementation."""
 
 from __future__ import annotations
 
 import re
-import string
 import sys
 from dataclasses import dataclass
 from importlib import resources
@@ -23,6 +18,7 @@ from behave_gen.paths import (
     validate_name,
 )
 from behave_gen.project import Project, ProjectError
+from behave_gen.templates.engine import TemplateRenderError, get_engine
 
 _FEATURE_TEMPLATE_ROOT = "behave_gen.templates.features"
 
@@ -47,19 +43,36 @@ def _format_tag_line(parts: tuple[str, ...]) -> str:
     """
     if not parts:
         return ""
-    normalized = [p if p.startswith("@") else f"@{p}" for p in parts]
+    normalized = sorted({p if p.startswith("@") else f"@{p}" for p in parts})
     return " ".join(normalized) + "\n"
 
 
-def _load_feature_template(template: str) -> str:
-    """Return the source text for a built-in feature template."""
+def _load_feature_template(template: str, templates_dir: Path | None = None) -> str:
+    """Return the source text for a feature template.
+
+    Custom ``<name>.feature`` files under ``templates_dir`` take precedence
+    over the built-in templates shipped with behave-gen.
+    """
+    if templates_dir is not None:
+        base = Path(templates_dir).resolve()
+        candidate = (base / f"{template}.feature").resolve()
+        if not candidate.is_relative_to(base):
+            raise AddError(f"Feature template {template!r} escapes the templates directory {base}.")
+        if candidate.is_file():
+            try:
+                return candidate.read_text(encoding="utf-8")
+            except OSError as exc:
+                raise AddError(f"Could not read template {template}: {exc}") from exc
+            except UnicodeDecodeError as exc:
+                raise AddError(f"Could not decode template {template}: {exc}") from exc
+
     with resources.as_file(
         resources.files(_FEATURE_TEMPLATE_ROOT).joinpath(f"{template}.feature")
     ) as p:
         path = Path(p)
         if not path.is_file():
             raise AddError(
-                f"Unknown feature template {template!r}. Available templates: default, crud."
+                f"Unknown feature template {template!r}. Available built-ins: default, crud."
             )
         try:
             return path.read_text(encoding="utf-8")
@@ -84,12 +97,14 @@ def _humanize(name: str) -> str:
     return re.sub(r"\b\w", lambda match: match.group(0).upper(), spaced)
 
 
-def add_feature(
+def add_feature(  # noqa: PLR0913 - keyword-only knobs mirror the project config.
     project_root: str | Path,
     options: AddFeatureOptions,
     *,
     features_dir: str | Path = "features",
     default_tags: tuple[str, ...] = (),
+    templates_dir: str | Path | None = None,
+    template_engine: str = "string",
 ) -> Path:
     """Generate a ``.feature`` file inside ``project_root``.
 
@@ -99,6 +114,10 @@ def add_feature(
         features_dir: Features directory relative to ``project_root``.
         default_tags: Default tags from project configuration, merged with
             tags supplied on ``options``.
+        templates_dir: Directory with custom ``.feature`` templates that take
+            precedence over the built-in ones.
+        template_engine: Template engine used to render the template
+            (``string`` or ``jinja2``).
 
     Returns:
         The path to the generated feature file.
@@ -130,7 +149,9 @@ def add_feature(
     if target.exists() or target.is_symlink():
         raise AddError(f"Feature file already exists: {target}. Use a different name or remove it.")
 
-    raw = _load_feature_template(options.template)
+    raw = _load_feature_template(
+        options.template, Path(templates_dir) if templates_dir is not None else None
+    )
     all_tags = default_tags + _tag_parts(options.tags)
     context = {
         "feature_name": _humanize(name),
@@ -138,10 +159,11 @@ def add_feature(
         "tags": _format_tag_line(all_tags),
     }
     try:
-        rendered = string.Template(raw).substitute(context)
-    except KeyError as exc:
-        key = exc.args[0] if exc.args else "<unknown>"
-        raise AddError(f"Missing template variable ${key}.") from exc
+        rendered = get_engine(template_engine).render(
+            raw, context, filename=f"{options.template}.feature"
+        )
+    except (TemplateRenderError, ValueError) as exc:
+        raise AddError(str(exc)) from exc
 
     # Validate the generated feature parses cleanly with behave-model.
     try:
@@ -175,6 +197,8 @@ def run_add_feature(
             options,
             features_dir=project.features_dir,
             default_tags=project.config.default_tags,
+            templates_dir=project.templates_dir,
+            template_engine=project.config.template_engine,
         )
     except AddError as exc:
         print(f"add feature: {exc}", file=sys.stderr)

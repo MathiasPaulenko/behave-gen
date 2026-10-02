@@ -74,7 +74,13 @@ class StringTemplateEngine:
 
 @dataclass(frozen=True, slots=True)
 class Jinja2Engine:
-    """Render templates using jinja2 (``{{ name }}`` placeholders)."""
+    """Render templates using jinja2 (``{{ name }}`` placeholders).
+
+    After the jinja2 pass, ``$name`` placeholders present in ``context`` are
+    substituted too, so the built-in template sets (which use
+    ``string.Template`` syntax) keep working when this engine is selected.
+    Unknown ``$name`` placeholders are left untouched.
+    """
 
     environment: jinja2.Environment
 
@@ -82,8 +88,8 @@ class Jinja2Engine:
         """Render ``source`` using the jinja2 environment with ``context``."""
         try:
             template = self.environment.from_string(source)
-            result: str = template.render(**context)
-            return result
+            result = template.render(**context)
+            return string.Template(result).safe_substitute(context)
         except Exception as exc:  # noqa: BLE001 - jinja2 raises many subclasses.
             raise TemplateRenderError(
                 f"jinja2 render error: {exc}" + (f" in {filename}" if filename else "")
