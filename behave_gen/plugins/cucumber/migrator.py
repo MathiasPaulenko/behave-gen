@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import fnmatch
 import os
-import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -32,18 +31,6 @@ class MigrationReport:
     def written_files(self) -> tuple[Path, ...]:
         """Return the paths of feature files written during migration."""
         return self.features
-
-
-# Cucumber-specific lines to strip: ``# language:`` is valid Gherkin but
-# Cucumber projects often include Java-style comments we leave alone.
-_CUCUMBER_LANGUAGE_RE = re.compile(r"^#\s*language:\s*\S+\s*$", re.MULTILINE)
-
-
-def _clean_feature_text(text: str) -> str:
-    """Remove Cucumber-specific directives that Behave does not understand."""
-    # Strip ``# language: xx`` lines (Behave uses behave.toml or ``--lang``).
-    cleaned = _CUCUMBER_LANGUAGE_RE.sub("", text)
-    return cleaned
 
 
 def _within_source(path: Path, source: Path) -> bool:
@@ -159,9 +146,8 @@ def migrate_cucumber(source: str | Path, out_dir: str | Path) -> MigrationReport
             skipped.append(str(rel))
             warnings.append(f"Could not read {rel}: {exc}")
             continue
-        cleaned = _clean_feature_text(text)
         try:
-            safe_write_text(target, cleaned)
+            safe_write_text(target, text)
         except OSError as exc:
             skipped.append(str(rel))
             warnings.append(f"Could not write {rel}: {exc}")
