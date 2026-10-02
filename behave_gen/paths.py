@@ -9,7 +9,7 @@ from __future__ import annotations
 import contextlib
 import os
 import uuid
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 
 # ASCII control characters are all code points below the space character.
 _CONTROL_CHAR_THRESHOLD = 32
@@ -152,4 +152,9 @@ def safe_parse_feature_filename(path: str | Path) -> str:
     p = Path(path)
     if p.is_absolute():
         return p.name
+    # A Windows absolute path is not ``is_absolute()`` on a POSIX host, so
+    # drive-letter (and UNC) paths must be checked with the Windows flavour.
+    win = PureWindowsPath(str(path))
+    if win.is_absolute():
+        return win.name
     return str(p)
