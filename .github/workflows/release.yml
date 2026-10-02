@@ -74,8 +74,13 @@ jobs:
           fetch-depth: 0
       - name: Create git tag
         run: |
-          git tag "v${{ needs.build.outputs.version }}"
-          git push origin "v${{ needs.build.outputs.version }}"
+          TAG="v${{ needs.build.outputs.version }}"
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG already exists; skipping creation."
+          else
+            git tag "$TAG"
+            git push origin "$TAG"
+          fi
       - uses: actions/download-artifact@v8
         with:
           name: dist

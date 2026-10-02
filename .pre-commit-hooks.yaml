@@ -1,0 +1,7 @@
+- id: behave-gen-check
+  name: behave-gen check
+  description: Run behave-doctor diagnostics on the project.
+  entry: behave-gen check
+  language: python
+  pass_filenames: false
+  additional_dependencies: ["behave-doctor>=1.0"]
