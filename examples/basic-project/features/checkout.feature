@@ -1,4 +1,4 @@
-@smoke @regression
+@regression @smoke
 Feature: Checkout
   CRUD checkout flow using the HTTP step library.
 

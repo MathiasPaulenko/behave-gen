@@ -24,7 +24,7 @@ behave
 migrated/features/src/test/resources/features/  Migrated Gherkin .feature files
 migrated/features/steps/                        Python step definitions (add after migration)
 environment.py                                  Behave hooks (before/after scenario, etc.)
-behave.toml                                     Behave configuration
+behave.ini                                      Behave configuration
 pyproject.toml                                  Project metadata and behave-gen config
 ```
 

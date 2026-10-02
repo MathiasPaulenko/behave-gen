@@ -16,7 +16,7 @@ behave
 features/          Gherkin .feature files
 features/steps/    Step definitions
 environment.py     Behave hooks (before/after scenario, etc.)
-behave.toml        Behave configuration
+behave.ini         Behave configuration
 pyproject.toml     Project metadata and behave-gen config
 ```
 

@@ -19,7 +19,7 @@ behave
 gen/features/          Gherkin .feature files generated from the spec
 gen/features/steps/    Generated HTTP step definitions
 environment.py         Behave hooks (before/after scenario, etc.)
-behave.toml            Behave configuration
+behave.ini             Behave configuration
 pyproject.toml         Project metadata and behave-gen config
 spec.yaml              Source OpenAPI 3.0 spec
 ```

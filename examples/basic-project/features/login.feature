@@ -1,4 +1,4 @@
-@smoke @auth
+@auth @smoke
 Feature: Login
   Authentication flow using the auth and HTTP step libraries.
 
