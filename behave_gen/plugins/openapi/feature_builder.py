@@ -68,7 +68,7 @@ def _format_header_tags(tags: tuple[str, ...]) -> str:
     r"""Render tag parts as a ``@tag1 @tag2\n`` prefix line."""
     if not tags:
         return ""
-    normalized = [t if t.startswith("@") else f"@{t}" for t in tags]
+    normalized = sorted({t if t.startswith("@") else f"@{t}" for t in tags})
     return " ".join(normalized) + "\n"
 
 
@@ -88,7 +88,7 @@ def _scenario_for(operation: OpenApiOperation) -> str:
     lines = [
         f"  Scenario: {title}",
         f'    When I send a {method} request to "{operation.path}"',
-        "    Then the response status should be 200",
+        f"    Then the response status should be {operation.expected_status}",
     ]
     return "\n".join(lines)
 

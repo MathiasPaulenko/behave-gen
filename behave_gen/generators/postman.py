@@ -1,6 +1,6 @@
 """Postman generator for behave-gen.
 
-Implements the :class:`Generator` protocol for Postman Collection v2.1 files.
+Implements the :class:`Generator` protocol for Postman Collection v2.x files.
 Produces ``.feature`` files grouped by folder and an optional concrete HTTP
 step library.
 """
@@ -17,7 +17,7 @@ from behave_gen.step_libraries import build_http_step_module
 
 
 class PostmanGenerator:
-    """Generator for Postman Collection v2.1 files."""
+    """Generator for Postman Collection v2.x files."""
 
     def can_handle(self, source: Path, config: dict[str, object] | None = None) -> bool:  # noqa: ARG002
         """Return True if ``source`` looks like a Postman v2.x collection."""

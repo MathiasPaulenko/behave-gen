@@ -1,9 +1,9 @@
-"""Postman Collection v2.1 parser.
+"""Postman Collection v2.x parser.
 
 Loads a Postman Collection JSON file and exposes a small, typed model
 (:class:`PostmanCollection`, :class:`PostmanRequest`) that the feature builder
-consumes. Only the v2.1 schema is supported; v1 collections are rejected with
-a clear error.
+consumes. v2.0 and v2.1 schemas are supported; v1 collections are rejected
+with a clear error.
 """
 
 from __future__ import annotations
@@ -34,7 +34,7 @@ class PostmanRequest:
 
 @dataclass(frozen=True, slots=True)
 class PostmanCollection:
-    """A typed view of a Postman Collection v2.1."""
+    """A typed view of a Postman Collection v2.x."""
 
     name: str
     schema: str
@@ -115,11 +115,11 @@ def _extract_requests(items: list[Any], parent_folder: str = "") -> list[Postman
 
 
 def parse_postman(source: str | Path) -> PostmanCollection:
-    """Parse a Postman Collection v2.1 JSON file.
+    """Parse a Postman Collection v2.x JSON file.
 
     Raises:
         PostmanParseError: If the file is missing, not valid JSON, or not a
-            Postman v2.1 collection.
+            Postman v2.0/v2.1 collection.
 
     """
     path = Path(source)

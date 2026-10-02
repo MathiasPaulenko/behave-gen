@@ -54,7 +54,7 @@ def _format_header_tags(tags: tuple[str, ...]) -> str:
     r"""Render tag parts as a ``@tag1 @tag2\n`` prefix line."""
     if not tags:
         return ""
-    normalized = [t if t.startswith("@") else f"@{t}" for t in tags]
+    normalized = sorted({t if t.startswith("@") else f"@{t}" for t in tags})
     return " ".join(normalized) + "\n"
 
 

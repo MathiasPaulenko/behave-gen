@@ -29,6 +29,7 @@ class OpenApiOperation:
     operation_id: str
     summary: str
     tags: tuple[str, ...]
+    expected_status: int = 200
 
 
 @dataclass(frozen=True, slots=True)
@@ -128,6 +129,33 @@ def _tags(op: dict[str, Any]) -> tuple[str, ...]:
     return tuple(str(tag) for tag in raw if isinstance(tag, str) and tag)
 
 
+_DEFAULT_STATUS = 200
+_STATUS_CODE_LENGTH = 3
+_SUCCESS_RANGE = range(200, 300)
+
+
+def _expected_status(op: dict[str, Any]) -> int:
+    """Pick the response status a scenario should assert.
+
+    Prefers the first declared 2xx response; falls back to the first declared
+    numeric status, then to 200 when ``responses`` is missing or unusable.
+    """
+    responses = op.get("responses")
+    if not isinstance(responses, dict):
+        return _DEFAULT_STATUS
+    first_numeric: int | None = None
+    for raw_code in responses:
+        code = str(raw_code)
+        if len(code) != _STATUS_CODE_LENGTH or not code.isdigit():
+            continue
+        numeric = int(code)
+        if numeric in _SUCCESS_RANGE:
+            return numeric
+        if first_numeric is None:
+            first_numeric = numeric
+    return first_numeric if first_numeric is not None else _DEFAULT_STATUS
+
+
 def parse_openapi(source: str | Path) -> OpenApiSpec:
     """Parse an OpenAPI 3.x document into an :class:`OpenApiSpec`.
 
@@ -177,6 +205,7 @@ def parse_openapi(source: str | Path) -> OpenApiSpec:
                     operation_id=_operation_id(op, method.lower(), path_str),
                     summary=_summary(op),
                     tags=_tags(op),
+                    expected_status=_expected_status(op),
                 )
             )
 
