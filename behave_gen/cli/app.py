@@ -1,8 +1,7 @@
 """Typer CLI application for behave-gen.
 
-Phase 2 registers every command as a no-op placeholder that prints
-``"not implemented yet"`` and exits with code ``1``. Real logic is wired in
-later phases by delegating to ``behave_gen.commands.*`` modules.
+Each command delegates to a ``behave_gen.commands.*`` module; this file only
+registers commands, global options, and the programmatic entry point.
 
 The command set and global options match the conventions used by
 ``behave-doctor``.
@@ -46,7 +45,6 @@ class _GlobalState:
     """Mutable container for global CLI options."""
 
     project: str | None = None
-    config: str | None = None
     config_obj: BehaveGenConfig | None = None
 
 
@@ -80,8 +78,12 @@ def main_callback(
         typer.echo(ctx.get_help())
         raise typer.Exit(0)
 
+    if verbose or dry_run:
+        pairs = (("--verbose", verbose), ("--dry-run", dry_run))
+        flags = " and ".join(flag for flag, on in pairs if on)
+        print(f"behave-gen: {flags} accepted but not implemented yet.", file=sys.stderr)
+
     state.project = project
-    state.config = config
     state.config_obj = _load_state_config(config)
 
 
@@ -92,7 +94,7 @@ def main_callback(
 def init_cmd(
     name: Annotated[str, typer.Argument(help="New project directory name.")],
     template: Annotated[str, typer.Option] = typer.Option(
-        "default", "--template", help="Template set to use."
+        "default", "--template", help="Template set name or directory."
     ),
     kit: Annotated[bool, typer.Option] = typer.Option(
         False, "--kit", help="Pre-wire behave-kit in environment.py."
@@ -103,8 +105,10 @@ def init_cmd(
     force: Annotated[bool, typer.Option] = typer.Option(
         False, "--force", help="Overwrite an existing directory."
     ),
-    template_engine: Annotated[str, typer.Option] = typer.Option(
-        "string", "--template-engine", help="Template engine: string or jinja2."
+    template_engine: Annotated[str | None, typer.Option] = typer.Option(
+        None,
+        "--template-engine",
+        help="Template engine: string or jinja2 (default: template_engine from config).",
     ),
 ) -> None:
     """Create a new Behave project from a template."""
@@ -118,7 +122,7 @@ def init_cmd(
         force=force,
         template_engine=template_engine,
     )
-    code = run_init(options, target_dir=state.project)
+    code = run_init(options, target_dir=state.project, config=state.config_obj)
     raise typer.Exit(code=code)
 
 
@@ -404,7 +408,7 @@ def update_cmd(
     raise typer.Exit(code=code)
 
 
-def run(argv: Sequence[str] | None = None) -> int:
+def run(argv: Sequence[str] | None = None) -> int:  # noqa: PLR0911 - each error path returns.
     """Programmatic entry point used by tests and ``python -m behave_gen``."""
     try:
         result = app(args=list(argv) if argv is not None else None, standalone_mode=False)
@@ -417,9 +421,15 @@ def run(argv: Sequence[str] | None = None) -> int:
         print(f"behave-gen: {exc}", file=sys.stderr)
         return 1
     except Exception as exc:
-        # Click/Typer usage errors (e.g. unknown options) carry an exit_code.
+        # Typer/click usage errors (unknown options, missing args, ...) carry
+        # an exit_code and know how to format their message; with
+        # standalone_mode=False they are raised without printing anything.
         exit_code = getattr(exc, "exit_code", None)
         if isinstance(exit_code, int):
+            formatter = getattr(exc, "format_message", None)
+            message = formatter() if callable(formatter) else str(exc)
+            if message:
+                print(f"behave-gen: {message}", file=sys.stderr)
             return exit_code
         raise
     if isinstance(result, int):
