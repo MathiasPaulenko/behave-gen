@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-11-17
+
 ### Fixed
 
 - `add steps --from-recording` now emits Gherkin steps that keep their original
