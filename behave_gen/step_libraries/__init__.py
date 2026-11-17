@@ -22,8 +22,8 @@ def http_template() -> str:
 
 
 def _escape_for_source(value: str) -> str:
-    """Escape backslashes and double quotes so a value is safe in a Python string."""
-    return value.replace("\\", "\\\\").replace('"', '\\"')
+    """Escape backslashes, double quotes and newlines for a Python string context."""
+    return value.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n").replace("\r", "\\r")
 
 
 def build_http_step_module(project_name: str = "generated_project") -> str:

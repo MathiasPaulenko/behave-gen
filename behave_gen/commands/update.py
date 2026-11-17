@@ -11,7 +11,7 @@ from __future__ import annotations
 import contextlib
 import sys
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 
 from behave_gen.commands.environment import AddEnvironmentOptions, add_environment
@@ -19,20 +19,6 @@ from behave_gen.commands.steps import _BUILTIN_LIBRARIES, AddStepsOptions, add_s
 from behave_gen.config import BehaveGenConfig
 from behave_gen.paths import resolve_project_root
 from behave_gen.project import Project, ProjectError
-
-
-class UpdateError(Exception):
-    """User-facing error raised by ``update``."""
-
-
-@dataclass(frozen=True, slots=True)
-class UpdateReport:
-    """Outcome of an update run."""
-
-    updated: tuple[str, ...] = field(default_factory=tuple)
-    unchanged: tuple[str, ...] = field(default_factory=tuple)
-    skipped: tuple[str, ...] = field(default_factory=tuple)
-    warnings: tuple[str, ...] = field(default_factory=tuple)
 
 
 @dataclass(frozen=True, slots=True)

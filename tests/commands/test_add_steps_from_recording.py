@@ -12,6 +12,7 @@ from behave_gen.cli.app import app
 from behave_gen.commands.init import InitOptions, init_project
 from behave_gen.commands.steps import (
     AddStepsError,
+    RecordingOutput,
     add_steps_from_recording,
 )
 from behave_gen.recording import (
@@ -77,6 +78,26 @@ class TestParseRecording:
         with pytest.raises(RecordingError, match="No supported actions"):
             parse_recording(bad)
 
+    def test_parse_rejects_non_string_url(self, tmp_path: Path) -> None:
+        """A ``url`` field that is a list must be rejected, not stringified."""
+        bad = tmp_path / "bad_url.yaml"
+        bad.write_text(
+            "actions:\n  - type: navigate\n    url: [a, b]\n",
+            encoding="utf-8",
+        )
+        with pytest.raises(RecordingError, match="'url' must be a string"):
+            parse_recording(bad)
+
+    def test_parse_rejects_non_string_selector(self, tmp_path: Path) -> None:
+        """A numeric ``selector`` field must be rejected at parse time."""
+        bad = tmp_path / "bad_selector.yaml"
+        bad.write_text(
+            "actions:\n  - type: click\n    selector: 5\n",
+            encoding="utf-8",
+        )
+        with pytest.raises(RecordingError, match="'selector' must be a string"):
+            parse_recording(bad)
+
 
 # ---------------------------------------------------------------------------
 # Gherkin generation
@@ -84,12 +105,14 @@ class TestParseRecording:
 
 
 class TestGherkinGeneration:
-    def test_gherkin_lines_first_step_keeps_keyword(self) -> None:
+    def test_gherkin_lines_preserve_keywords(self) -> None:
+        """Steps keep their keyword; ``And`` would inherit the previous
+        keyword type and no longer match the generated step definitions."""
         actions = parse_recording(_FIXTURES / "sample_recording.yaml")
         lines = actions_to_gherkin_lines(actions)
         assert lines[0].startswith("Given ")
-        assert lines[1].startswith("And ")
-        assert lines[2].startswith("And ")
+        assert lines[1].startswith("When ")
+        assert lines[2].startswith("When ")
 
     def test_gherkin_navigate(self) -> None:
         actions = parse_recording(_FIXTURES / "sample_recording.yaml")
@@ -99,22 +122,22 @@ class TestGherkinGeneration:
     def test_gherkin_click_with_selector(self) -> None:
         actions = parse_recording(_FIXTURES / "sample_recording.yaml")
         lines = actions_to_gherkin_lines(actions)
-        assert 'And I click on "button#login"' in lines[1]
+        assert 'When I click on "button#login"' in lines[1]
 
     def test_gherkin_click_text_fallback(self) -> None:
         actions = parse_recording(_FIXTURES / "click_text_fallback.yaml")
         lines = actions_to_gherkin_lines(actions)
-        assert 'And I click "Login"' in lines
+        assert 'When I click "Login"' in lines
 
     def test_gherkin_type(self) -> None:
         actions = parse_recording(_FIXTURES / "sample_recording.yaml")
         lines = actions_to_gherkin_lines(actions)
-        assert 'And I enter "admin" into "input#username"' in lines
+        assert 'When I enter "admin" into "input#username"' in lines
 
     def test_gherkin_scroll(self) -> None:
         actions = parse_recording(_FIXTURES / "sample_recording.yaml")
         lines = actions_to_gherkin_lines(actions)
-        assert "And I scroll to 500" in lines
+        assert "When I scroll to 500" in lines
 
     def test_gherkin_scroll_defaults_to_zero(self) -> None:
         """A scroll action with ``y=None`` should produce ``When I scroll to 0``."""
@@ -152,6 +175,21 @@ class TestGherkinGeneration:
         )
         actions = parse_recording(rec)
         assert actions[0].y == 100
+
+    def test_gherkin_sanitizes_quotes_and_newlines(self) -> None:
+        """Quotes/newlines in recorded values must not break the Gherkin arg."""
+        actions = [RecordedAction(action_type="click", selector='#a[title="x"]\nScenario: evil')]
+        lines = actions_to_gherkin_lines(actions)
+        assert lines == ["When I click on \"#a[title='x'] Scenario: evil\""]
+
+    def test_gherkin_whitespace_only_values_skipped(self) -> None:
+        """Whitespace-only args would emit ``\"\"`` which never matches a step."""
+        actions = [
+            RecordedAction(action_type="navigate", url="   "),
+            RecordedAction(action_type="click", selector=" "),
+            RecordedAction(action_type="type", selector="s", value=" "),
+        ]
+        assert actions_to_gherkin_lines(actions) == []
 
     def test_gherkin_navigate_missing_url_skipped(self) -> None:
         """A navigate action without url is silently skipped."""
@@ -317,7 +355,7 @@ class TestAddStepsFromRecording:
         content = feature_path.read_text(encoding="utf-8")
         assert "Feature: Recorded user flow" in content
         assert 'Given I navigate to "https://example.com"' in content
-        assert 'And I click on "button#login"' in content
+        assert 'When I click on "button#login"' in content
 
     def test_existing_steps_file_raises(self, tmp_path: Path) -> None:
         root = _make_project(tmp_path)
@@ -377,6 +415,26 @@ class TestAddStepsFromRecording:
         assert 'I click "{text}"' in content
         assert "def step_click_text" in content
         assert 'I click "{text}"' in generated
+
+    def test_steps_filename_traversal_rejected(self, tmp_path: Path) -> None:
+        """A ``..`` in ``steps_filename`` must not escape the steps directory."""
+        root = _make_project(tmp_path)
+        with pytest.raises(AddStepsError, match="inside steps directory"):
+            add_steps_from_recording(
+                root,
+                _FIXTURES / "sample_recording.yaml",
+                output=RecordingOutput(steps_filename="../evil.py"),
+            )
+
+    def test_feature_filename_traversal_rejected(self, tmp_path: Path) -> None:
+        """A ``..`` in ``feature_filename`` must not escape the features dir."""
+        root = _make_project(tmp_path)
+        with pytest.raises(AddStepsError, match="inside features directory"):
+            add_steps_from_recording(
+                root,
+                _FIXTURES / "sample_recording.yaml",
+                output=RecordingOutput(feature_filename="../evil.feature"),
+            )
 
 
 # ---------------------------------------------------------------------------

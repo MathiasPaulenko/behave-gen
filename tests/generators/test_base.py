@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from behave_gen.generators.base import GenerationResult
+from behave_gen.generators.base import GenerationResult, validate_feature_map
 
 
 def test_generation_result_written_files() -> None:
@@ -20,3 +20,18 @@ def test_generation_result_defaults() -> None:
     assert result.steps == ()
     assert result.warnings == ()
     assert result.written_files == ()
+
+
+def test_validate_feature_map_keeps_parseable() -> None:
+    valid = "Feature: Ok\n  Scenario: S\n    Given something\n"
+    kept, warnings = validate_feature_map({"ok": valid})
+    assert kept == {"ok": valid}
+    assert warnings == []
+
+
+def test_validate_feature_map_drops_unparseable() -> None:
+    """Unparseable generated features must be skipped with a warning."""
+    kept, warnings = validate_feature_map({"bad": "this is not gherkin\n"})
+    assert kept == {}
+    assert len(warnings) == 1
+    assert "bad.feature" in warnings[0]

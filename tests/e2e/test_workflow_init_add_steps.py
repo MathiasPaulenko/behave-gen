@@ -10,9 +10,11 @@ from pathlib import Path
 
 from behave_gen.commands.add import AddFeatureOptions, add_feature
 from behave_gen.commands.environment import AddEnvironmentOptions, add_environment
-from behave_gen.commands.steps import AddStepsOptions, add_steps
+from behave_gen.commands.steps import AddStepsOptions, add_steps, add_steps_from_recording
 
 from .conftest import collect_files, parse_all_features, run_behave_dry_run, run_ruff_check
+
+_RECORDING_FIXTURE = Path(__file__).resolve().parent.parent / "fixtures" / "recording"
 
 
 class TestInitScaffolding:
@@ -109,6 +111,21 @@ class TestAddSteps:
         add_steps(project, AddStepsOptions(lib="auth"))
         proc = run_ruff_check(project, "features/steps/auth_steps.py")
         assert proc.returncode == 0, f"ruff failed:\n{proc.stdout}\n{proc.stderr}"
+
+
+class TestRecordingWorkflow:
+    """``add steps --from-recording`` produces matching feature + step defs.
+
+    Regression: gherkin lines rewritten to ``And`` inherited the previous
+    keyword type, so the generated feature could never match the ``@when``
+    step definitions and ``behave`` reported them as undefined.
+    """
+
+    def test_recorded_project_passes_behave_dry_run(self, project: Path) -> None:
+        add_steps_from_recording(project, _RECORDING_FIXTURE / "sample_recording.yaml")
+        proc = run_behave_dry_run(project)
+        assert proc.returncode == 0, f"behave --dry-run failed:\n{proc.stdout}\n{proc.stderr}"
+        assert "undefined" not in proc.stdout.lower()
 
 
 class TestFullWorkflowBehaveDryRun:

@@ -76,7 +76,7 @@ def _humanize(folder: str) -> str:
 def _scenario_for(request: PostmanRequest) -> str:
     """Build a single scenario block for a Postman request."""
     method = request.method.upper()
-    path = url_to_path(request.url)
+    path = _clean_text(url_to_path(request.url)).replace('"', "'") or "/"
     title = _clean_text(request.name or f"{method} {path}")
     lines = [
         f"  Scenario: {title}",
@@ -96,7 +96,7 @@ def build_feature_text(
     """Build the full ``.feature`` file text for a single folder."""
     header_tags = _format_header_tags(tags)
     feature_name = _humanize(folder) if folder else title
-    description = f"Scenarios for {feature_name} generated from {title}."
+    description = f"Scenarios for {feature_name} generated from {_clean_text(title)}."
     scenarios = "\n\n".join(_scenario_for(req) for req in requests)
     return f"{header_tags}Feature: {feature_name}\n  {description}\n\n{scenarios}\n"
 

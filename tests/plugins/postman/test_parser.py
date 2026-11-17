@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -160,3 +161,42 @@ def test_parse_null_item_name_uses_unnamed(tmp_path: Path) -> None:
     )
     collection = parse_postman(path)
     assert collection.requests[0].name == "Unnamed"
+
+
+def test_parse_deeply_nested_folders_raise(tmp_path: Path) -> None:
+    """Pathologically nested folders must raise PostmanParseError, not RecursionError."""
+    item: dict[str, object] = {"name": "leaf", "request": {"method": "GET", "url": "x"}}
+    for i in range(80):
+        item = {"name": f"f{i}", "item": [item]}
+    path = tmp_path / "deep.json"
+    path.write_text(
+        json.dumps(
+            {
+                "info": {
+                    "name": "x",
+                    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/",
+                },
+                "item": [item],
+            }
+        ),
+        encoding="utf-8",
+    )
+    with pytest.raises(PostmanParseError, match="nesting"):
+        parse_postman(path)
+
+
+def test_parse_schema_v210_rejected(tmp_path: Path) -> None:
+    """A hypothetical ``v2.10`` schema must not pass the ``v2.1`` substring check."""
+    path = tmp_path / "v210.json"
+    path.write_text(
+        '{"info": {"name": "x", "schema": "https://schema.getpostman.com/json/collection/v2.10.0/"},'
+        '"item": []}',
+        encoding="utf-8",
+    )
+    with pytest.raises(PostmanParseError, match="schema"):
+        parse_postman(path)
+
+
+def test_url_to_path_invalid_url_returns_root() -> None:
+    """URLs that make ``urlparse`` raise ValueError must not propagate."""
+    assert url_to_path("http://[invalid") == "/"

@@ -138,10 +138,10 @@ def parse_recording(path: str | Path) -> list[RecordedAction]:
         actions.append(
             RecordedAction(
                 action_type=action_type,
-                url=item.get("url"),
-                selector=item.get("selector"),
-                text=item.get("text"),
-                value=item.get("value"),
+                url=_coerce_str(item.get("url"), "url", i),
+                selector=_coerce_str(item.get("selector"), "selector", i),
+                text=_coerce_str(item.get("text"), "text", i),
+                value=_coerce_str(item.get("value"), "value", i),
                 x=_coerce_int(item.get("x"), "x", i),
                 y=_coerce_int(item.get("y"), "y", i),
             )
@@ -156,24 +156,47 @@ def parse_recording(path: str | Path) -> list[RecordedAction]:
 # ---------------------------------------------------------------------------
 
 
+def _coerce_str(value: object, field_name: str, index: int) -> str | None:
+    """Validate that *value* is a string or None, rejecting other types."""
+    if value is None or isinstance(value, str):
+        return value
+    raise RecordingError(
+        f"Action #{index} field '{field_name}' must be a string, got {type(value).__name__}."
+    )
+
+
+def _step_arg(value: str) -> str:
+    """Sanitize a value interpolated inside a double-quoted Gherkin step argument."""
+    return " ".join(value.replace('"', "'").split())
+
+
 def _gherkin_navigate(action: RecordedAction) -> str | None:
     if not action.url:
         return None
-    return f'Given I navigate to "{action.url}"'
+    url = _step_arg(action.url)
+    if not url:
+        return None
+    return f'Given I navigate to "{url}"'
 
 
 def _gherkin_click(action: RecordedAction) -> str | None:
-    if action.selector:
-        return f'When I click on "{action.selector}"'
-    if action.text:
-        return f'When I click "{action.text}"'
+    selector = _step_arg(action.selector) if action.selector else ""
+    if selector:
+        return f'When I click on "{selector}"'
+    text = _step_arg(action.text) if action.text else ""
+    if text:
+        return f'When I click "{text}"'
     return None
 
 
 def _gherkin_type(action: RecordedAction) -> str | None:
     if not action.value or not action.selector:
         return None
-    return f'When I enter "{action.value}" into "{action.selector}"'
+    value = _step_arg(action.value)
+    selector = _step_arg(action.selector)
+    if not value or not selector:
+        return None
+    return f'When I enter "{value}" into "{selector}"'
 
 
 def _coerce_int(value: object, field_name: str, index: int) -> int | None:
@@ -215,18 +238,14 @@ def _gherkin_line(action: RecordedAction) -> str | None:
 def actions_to_gherkin_lines(actions: list[RecordedAction]) -> list[str]:
     """Convert actions to Gherkin step lines.
 
-    The first step keeps its original keyword; subsequent steps use ``And``.
+    Each step keeps its original keyword (``Given``/``When``). Rewriting
+    subsequent steps to ``And`` would make them inherit the previous step's
+    keyword type, which no longer matches the generated step definitions.
     """
     lines: list[str] = []
     for action in actions:
         line = _gherkin_line(action)
-        if line is None:
-            continue
-        if lines:
-            keyword = line.split(" ", 1)[0]
-            rest = line[len(keyword) + 1 :]
-            lines.append(f"And {rest}")
-        else:
+        if line is not None:
             lines.append(line)
     return lines
 
@@ -275,21 +294,23 @@ _STEP_TEMPLATES: dict[str, tuple[str, str, str]] = {
 
 
 def _key_navigate(action: RecordedAction) -> str | None:
-    if not action.url:
+    if not action.url or not _step_arg(action.url):
         return None
     return 'I navigate to "{url}"'
 
 
 def _key_click(action: RecordedAction) -> str | None:
-    if action.selector:
+    if action.selector and _step_arg(action.selector):
         return 'I click on "{selector}"'
-    if action.text:
+    if action.text and _step_arg(action.text):
         return 'I click "{text}"'
     return None
 
 
 def _key_type(action: RecordedAction) -> str | None:
     if not action.value or not action.selector:
+        return None
+    if not _step_arg(action.value) or not _step_arg(action.selector):
         return None
     return 'I enter "{value}" into "{selector}"'
 

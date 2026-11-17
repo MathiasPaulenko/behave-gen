@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from behave_gen.generators.base import GenerationResult
+from behave_gen.generators.base import GenerationResult, validate_feature_map
 from behave_gen.paths import safe_write_text
 from behave_gen.plugins.postman import build_features, parse_postman
 from behave_gen.plugins.postman.parser import PostmanParseError
@@ -47,7 +47,9 @@ class PostmanGenerator:
         steps_dir = features_dir / "steps"
         features_dir.mkdir(parents=True, exist_ok=True)
 
-        feature_map = build_features(collection, tag=tag, default_tags=default_tags)
+        feature_map, warnings = validate_feature_map(
+            build_features(collection, tag=tag, default_tags=default_tags)
+        )
 
         written_features: list[Path] = []
         for filename, content in feature_map.items():
@@ -65,7 +67,6 @@ class PostmanGenerator:
             safe_write_text(steps_file, steps_text)
             written_steps.append(steps_file)
 
-        warnings: list[str] = []
         if not feature_map:
             warnings.append("No requests found in the collection.")
 

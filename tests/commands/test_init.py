@@ -20,6 +20,23 @@ def _project_files(root: Path) -> set[str]:
     return {str(p.relative_to(root)).replace("\\", "/") for p in root.rglob("*") if p.is_file()}
 
 
+def test_init_cleans_up_partial_project_on_render_failure(tmp_path: Path) -> None:
+    """A failed render must not leave a half-generated project directory."""
+    template_dir = tmp_path / "bad_tpl"
+    template_dir.mkdir()
+    (template_dir / "file.txt").write_text("value: $missing_var\n", encoding="utf-8")
+    with pytest.raises(InitError):
+        init_project(tmp_path, InitOptions(name="proj", template=str(template_dir)))
+    assert not (tmp_path / "proj").exists()
+
+
+def test_init_unknown_template_does_not_create_project_dir(tmp_path: Path) -> None:
+    """An unknown template name must fail before any directory is created."""
+    with pytest.raises(InitError):
+        init_project(tmp_path, InitOptions(name="proj", template="nope-no-such-set"))
+    assert not (tmp_path / "proj").exists()
+
+
 def test_init_creates_project(tmp_path: Path) -> None:
     root = init_project(tmp_path, InitOptions(name="my-project"))
     assert root == (tmp_path / "my-project").resolve()

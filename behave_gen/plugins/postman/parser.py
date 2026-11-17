@@ -9,6 +9,7 @@ with a clear error.
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -16,6 +17,9 @@ from urllib.parse import urlparse
 
 # Reject collections larger than 10 MiB before reading them into memory.
 _MAX_COLLECTION_SIZE_BYTES = 10 * 1024 * 1024
+
+# Bound recursion when walking nested item folders in malformed collections.
+_MAX_FOLDER_DEPTH = 64
 
 
 class PostmanParseError(Exception):
@@ -90,8 +94,12 @@ def _resolve_url(url_field: Any) -> str:
     return str(url_field)
 
 
-def _extract_requests(items: list[Any], parent_folder: str = "") -> list[PostmanRequest]:
+def _extract_requests(
+    items: list[Any], parent_folder: str = "", depth: int = 0
+) -> list[PostmanRequest]:
     """Recursively extract requests from Postman items, tracking folder names."""
+    if depth > _MAX_FOLDER_DEPTH:
+        raise PostmanParseError(f"Collection folder nesting exceeds {_MAX_FOLDER_DEPTH} levels.")
     requests: list[PostmanRequest] = []
     for item in items:
         if not isinstance(item, dict):
@@ -99,7 +107,7 @@ def _extract_requests(items: list[Any], parent_folder: str = "") -> list[Postman
         name = str(item.get("name") or "Unnamed")
         if "item" in item and isinstance(item["item"], list):
             folder = name if not parent_folder else f"{parent_folder}/{name}"
-            requests.extend(_extract_requests(item["item"], folder))
+            requests.extend(_extract_requests(item["item"], folder, depth + 1))
             continue
         request = item.get("request")
         if not isinstance(request, dict):
@@ -155,7 +163,7 @@ def parse_postman(source: str | Path) -> PostmanCollection:
         raise PostmanParseError("'info' must be a mapping.")
 
     schema = str(info.get("schema") or "")
-    if "v2.1" not in schema and "v2.0" not in schema:
+    if not re.search(r"v2\.[01]\.", schema):
         raise PostmanParseError(
             f"Unsupported Postman schema {schema!r}. Only v2.0/v2.1 are supported."
         )
@@ -174,7 +182,10 @@ def parse_postman(source: str | Path) -> PostmanCollection:
 
 def url_to_path(url: str) -> str:
     """Convert a full URL into a path component for HTTP step syntax."""
-    parsed = urlparse(url)
+    try:
+        parsed = urlparse(url)
+    except ValueError:
+        return "/"
     if parsed.path:
         return parsed.path
     return "/"

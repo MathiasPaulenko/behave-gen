@@ -126,7 +126,12 @@ def add_steps(
         )
 
     raw = _load_step_template(template_name)
-    project_name = root.name.replace("\\", "\\\\").replace('"', '\\"')
+    project_name = (
+        root.name.replace("\\", "\\\\")
+        .replace('"', '\\"')
+        .replace("\n", "\\n")
+        .replace("\r", "\\r")
+    )
     try:
         rendered = string.Template(raw).substitute(project_name=project_name)
     except KeyError as exc:
@@ -169,7 +174,7 @@ def _write_feature_file(
     features: Path, filename: str, actions: list[RecordedAction]
 ) -> Path | None:
     """Write a feature file from actions, skipping if it already exists."""
-    target = features / filename
+    target = (features / filename).resolve()
     if not target.is_relative_to(features):
         raise AddStepsError(f"Feature file {target} must be inside features directory {features}.")
     if target.exists() or target.is_symlink():
@@ -231,7 +236,7 @@ def add_steps_from_recording(
     existing = collect_existing_step_patterns(steps)
     source, generated, skipped = actions_to_step_definitions(actions, existing_patterns=existing)
 
-    steps_target = steps / out.steps_filename
+    steps_target = (steps / out.steps_filename).resolve()
     if not steps_target.is_relative_to(steps):
         raise AddStepsError(f"Step file {steps_target} must be inside steps directory {steps}.")
     if steps_target.exists() or steps_target.is_symlink():

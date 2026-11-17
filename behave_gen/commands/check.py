@@ -22,10 +22,6 @@ from behave_gen.project import Project, ProjectError
 _UNDEFINED_STEP_RULES = frozenset({"undefined-step", "undefined_step", "missing-step"})
 
 
-class CheckError(Exception):
-    """User-facing error raised by ``check``."""
-
-
 @dataclass(frozen=True, slots=True)
 class CheckSuggestion:
     """A suggestion for resolving an undefined step."""
@@ -170,7 +166,11 @@ def run_check(
         _emit(report, fmt_normalized)
         return 0
 
-    import behave_doctor  # noqa: PLC0415 - optional extra imported lazily.
+    try:
+        import behave_doctor  # noqa: PLC0415 - optional extra imported lazily.
+    except ImportError as exc:
+        print(f"check: behave-doctor is broken: {exc}", file=sys.stderr)
+        return 1
 
     try:
         raw = behave_doctor.scan_project(project.root)

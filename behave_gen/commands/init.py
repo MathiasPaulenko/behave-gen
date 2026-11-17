@@ -115,11 +115,6 @@ def init_project(  # noqa: PLR0912 - force overwrite has many filesystem-state b
         except OSError as exc:
             raise InitError(f"Could not remove existing project {project_root}: {exc}") from exc
 
-    try:
-        project_root.mkdir(parents=True)
-    except OSError as exc:
-        raise InitError(f"Could not create project directory {project_root}: {exc}") from exc
-
     reg = registry if registry is not None else default_registry()
     template_set = _resolve_template_set(options.template, reg)
 
@@ -128,11 +123,17 @@ def init_project(  # noqa: PLR0912 - force overwrite has many filesystem-state b
     except ValueError as exc:
         raise InitError(str(exc)) from exc
 
+    try:
+        project_root.mkdir(parents=True)
+    except OSError as exc:
+        raise InitError(f"Could not create project directory {project_root}: {exc}") from exc
+
     skip, rename = build_skip_and_rename(options.kit, options.data)
     context = {"project_name": name, "name": name}
     try:
         template_set.render_to(project_root, context, engine, skip=skip, rename=rename)
     except TemplateRenderError as exc:
+        shutil.rmtree(project_root, ignore_errors=True)
         raise InitError(str(exc)) from exc
     return project_root
 

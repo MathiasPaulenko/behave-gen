@@ -134,6 +134,11 @@ def migrate_cucumber(source: str | Path, out_dir: str | Path) -> MigrationReport
         # Single file source: use just the filename; otherwise preserve layout.
         rel = Path(feature_file.name) if src.is_file() else feature_file.relative_to(src)
         target = features_dir / rel
+        if target == feature_file:
+            # Destination inside the source tree would rewrite the input file.
+            skipped.append(str(rel))
+            warnings.append(f"Skipped {rel}: destination overlaps the source file.")
+            continue
         try:
             target.parent.mkdir(parents=True, exist_ok=True)
         except OSError as exc:

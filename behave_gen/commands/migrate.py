@@ -17,10 +17,6 @@ from behave_gen.plugins.cucumber.migrator import MigrationError
 from behave_gen.project import Project, ProjectError
 
 
-class MigrateError(Exception):
-    """User-facing error raised by ``migrate``."""
-
-
 @dataclass(frozen=True, slots=True)
 class MigrateOptions:
     """Options for ``migrate``."""

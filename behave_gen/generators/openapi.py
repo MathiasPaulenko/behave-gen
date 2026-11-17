@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from behave_gen.generators.base import GenerationResult
+from behave_gen.generators.base import GenerationResult, validate_feature_map
 from behave_gen.paths import safe_write_text
 from behave_gen.plugins.openapi import build_features, build_steps, parse_openapi
 from behave_gen.plugins.openapi.parser import OpenApiParseError
@@ -70,12 +70,14 @@ class OpenApiGenerator:
         steps_dir = features_dir / "steps"
         features_dir.mkdir(parents=True, exist_ok=True)
 
-        feature_map = build_features(
-            spec,
-            tag=tag,
-            default_tags=default_tags,
-            include_paths=include_paths,
-            include_methods=include_methods,
+        feature_map, warnings = validate_feature_map(
+            build_features(
+                spec,
+                tag=tag,
+                default_tags=default_tags,
+                include_paths=include_paths,
+                include_methods=include_methods,
+            )
         )
 
         written_features: list[Path] = []
@@ -92,7 +94,6 @@ class OpenApiGenerator:
             safe_write_text(steps_file, steps_text)
             written_steps.append(steps_file)
 
-        warnings: list[str] = []
         if not feature_map:
             warnings.append("No operations matched the given filters.")
 

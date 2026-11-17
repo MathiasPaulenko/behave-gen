@@ -11,7 +11,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
 
-__all__ = ["GenerationResult", "Generator"]
+from behave_model import ParseError, parse_feature
+
+from behave_gen.paths import safe_parse_feature_filename
+
+__all__ = ["GenerationResult", "Generator", "validate_feature_map"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -50,3 +54,21 @@ class Generator(Protocol):
     ) -> GenerationResult:
         """Generate Behave artifacts from ``source`` into ``out_dir``."""
         ...
+
+
+def validate_feature_map(feature_map: dict[str, str]) -> tuple[dict[str, str], list[str]]:
+    """Drop feature contents that fail to parse with ``behave_model``.
+
+    Returns ``(valid_map, warnings)`` so generators never write a ``.feature``
+    file that ``behave`` cannot parse; each dropped entry produces a warning.
+    """
+    valid: dict[str, str] = {}
+    warnings: list[str] = []
+    for filename, content in feature_map.items():
+        try:
+            parse_feature(content, filename=safe_parse_feature_filename(f"{filename}.feature"))
+        except ParseError as exc:
+            warnings.append(f"Skipped unparseable generated feature {filename}.feature: {exc}")
+            continue
+        valid[filename] = content
+    return valid, warnings

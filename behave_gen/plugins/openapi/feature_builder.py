@@ -84,10 +84,11 @@ def _collect_tags(tag: str | None, default_tags: tuple[str, ...]) -> tuple[str, 
 def _scenario_for(operation: OpenApiOperation) -> str:
     """Build a single scenario block for an operation."""
     method = operation.method.upper()
-    title = _clean_text(operation.summary or f"{method} {operation.path}")
+    path = _clean_text(operation.path).replace('"', "'") or "/"
+    title = _clean_text(operation.summary or f"{method} {path}")
     lines = [
         f"  Scenario: {title}",
-        f'    When I send a {method} request to "{operation.path}"',
+        f'    When I send a {method} request to "{path}"',
         f"    Then the response status should be {operation.expected_status}",
     ]
     return "\n".join(lines)
@@ -103,7 +104,7 @@ def build_feature_text(
     """Build the full ``.feature`` file text for a single path."""
     header_tags = _format_header_tags(tags)
     feature_name = _humanize(path)
-    description = f"Scenarios for {feature_name} generated from {title}."
+    description = f"Scenarios for {feature_name} generated from {_clean_text(title)}."
     scenarios = "\n\n".join(_scenario_for(op) for op in operations)
     return f"{header_tags}Feature: {feature_name}\n  {description}\n\n{scenarios}\n"
 

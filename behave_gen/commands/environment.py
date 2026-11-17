@@ -106,7 +106,10 @@ def add_environment(
     project_name = _project_name(root)
     try:
         rendered = string.Template(raw).substitute(
-            project_name=project_name.replace("\\", "\\\\").replace('"', '\\"'),
+            project_name=project_name.replace("\\", "\\\\")
+            .replace('"', '\\"')
+            .replace("\n", "\\n")
+            .replace("\r", "\\r"),
         )
     except KeyError as exc:
         key = exc.args[0] if exc.args else "<unknown>"

@@ -17,10 +17,6 @@ from behave_gen.paths import resolve_project_root, safe_parse_feature_filename
 from behave_gen.project import Project, ProjectError
 
 
-class PreviewError(Exception):
-    """User-facing error raised by ``preview``."""
-
-
 def _render_tags(tags: Any, indent: str = "") -> list[str]:
     """Render a tag list as a single ``@tag1 @tag2`` line (or empty)."""
     tag_list = list(tags or [])

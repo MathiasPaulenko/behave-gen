@@ -20,10 +20,6 @@ from behave_gen.paths import resolve_project_root, safe_parse_feature_filename
 from behave_gen.project import Project, ProjectError
 
 
-class StatsError(Exception):
-    """User-facing error raised by ``stats``."""
-
-
 @dataclass(frozen=True, slots=True)
 class StatsReport:
     """Aggregate statistics for a Behave project."""

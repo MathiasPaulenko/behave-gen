@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `add steps --from-recording` now emits Gherkin steps that keep their original
+  `Given`/`When` keywords. Rewriting later steps to `And` made them inherit the
+  previous keyword type, so generated features could never match the generated
+  `@when` step definitions and every step came out undefined.
+- Recording fields `url`, `selector`, `text` and `value` are now type-checked
+  at parse time instead of silently stringifying non-string YAML values.
+- Quotes and newlines inside recorded values and OpenAPI/Postman paths are
+  sanitized before being embedded in `"..."` Gherkin arguments, so hostile or
+  malformed inputs can no longer produce unparseable `.feature` files.
+- `from-openapi`, `from-swagger` and `from-postman` now validate each generated
+  feature with the Gherkin parser and skip unparseable output with a warning
+  instead of writing broken files.
+- Postman collections with pathological folder nesting now raise a clear
+  `PostmanParseError` instead of crashing with `RecursionError`, and URLs that
+  make `urlparse` fail no longer propagate `ValueError`.
+- `init` no longer leaves a half-generated project directory when template
+  resolution or rendering fails.
+- `dev` extras now include `pyyaml`, so `pip install -e ".[dev]"` (used by CI
+  and `make dev`) installs everything the test suite needs.
+- Removed dead code: `UpdateReport` and the unused `CheckError`, `StatsError`,
+  `PreviewError`, `MigrateError` and `UpdateError` exception classes.
+
+### Security
+
+- `RecordingOutput` step/feature filenames and the recorded feature target are
+  now resolved before the project-root containment check, so `..` components
+  can no longer escape the steps/features directories.
+- The Cucumber migrator skips feature files whose destination would overwrite
+  the source file itself.
+- `project_name` values embedded in generated source now escape newlines and
+  carriage returns in addition to quotes and backslashes.
+
 ## [1.3.0] - 2026-10-02
 
 ### Added
